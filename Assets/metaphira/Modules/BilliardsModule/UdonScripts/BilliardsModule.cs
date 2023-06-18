@@ -54,6 +54,13 @@ public class BilliardsModule : UdonSharpBehaviour
     [SerializeField] [HideInInspector] public Color k_fabricColour_9ball; // v1.6: ( 0.1, 0.6, 1.0, 1.0 )
     [SerializeField] [HideInInspector] public Color k_fabricColour_4ball; // v1.6: ( 0.15, 0.75, 0.3, 1.0 )
 
+    // cue sizes/scale
+    private Vector3[] cueSizes = {
+      new Vector3(0.5f, 0.5f, 0.5f),
+      new Vector3(1f, 1f, 1f),
+      new Vector3(1.25f, 1f, 1f)
+    };
+
     // cue guideline
     private readonly Color k_aimColour_aim = new Color(0.7f, 0.7f, 0.7f, 1.0f);
     private readonly Color k_aimColour_locked = new Color(1.0f, 1.0f, 1.0f, 1.0f);
@@ -157,7 +164,7 @@ public class BilliardsModule : UdonSharpBehaviour
     private int LOG_LEN = 0;
     private int LOG_PTR = 0;
     private string[] LOG_LINES = new string[32];
-    
+
     // cached copies of networked data, may be different from local game state
     [NonSerialized] public string[] playerNamesCached = new string[4];
 
@@ -180,6 +187,7 @@ public class BilliardsModule : UdonSharpBehaviour
     [NonSerialized] public uint winningTeamLocal;
     [NonSerialized] public uint previewWinningTeamLocal;
     [NonSerialized] public int activeCueSkin;
+    [NonSerialized] public Vector3 activeCueSize;
     [NonSerialized] public int tableSkinLocal;
     [NonSerialized] public int physicsModeLocal;
     private byte gameStateLocal = byte.MaxValue;
@@ -516,7 +524,7 @@ public class BilliardsModule : UdonSharpBehaviour
         if (localPlayerId == -1) return;
 
         _LogInfo("leaving lobby");
-        
+
         networkingManager._OnLeaveLobby(localPlayerId);
         playerNamesLocal[localPlayerId] = "";
         localPlayerId = -1;
@@ -766,7 +774,7 @@ public class BilliardsModule : UdonSharpBehaviour
             playerDetails[i] = playerNamesSynced[i] == "" ? "none" : playerNamesSynced[i];
         }
         _LogInfo($"onRemotePlayersChanged newPlayers={string.Join(",", playerDetails)}");
-        
+
         Array.Copy(playerNamesSynced, playerNamesLocal, playerNamesLocal.Length);
 
         localPlayerId = Array.IndexOf(playerNamesLocal, Networking.LocalPlayer.displayName);
@@ -2031,6 +2039,11 @@ public class BilliardsModule : UdonSharpBehaviour
         }
         return true;
     }
+
+    public void _SetCueSize0() { activeCueSize = cueSizes[0]; }
+    public void _SetCueSize1() { activeCueSize = cueSizes[1]; }
+    public void _SetCueSize2() { activeCueSize = cueSizes[2]; }
+
     #endregion
 
     #region Debugger
@@ -2136,7 +2149,7 @@ public void _RedrawDebugger() { }
 
         output += "\n---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n";
 
-        // Update display 
+        // Update display
         for (int i = 0; i < LOG_LEN; i++)
         {
             output += LOG_LINES[(LOG_MAX + LOG_PTR - LOG_LEN + i) % LOG_MAX];

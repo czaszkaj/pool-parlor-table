@@ -16,7 +16,9 @@ public class CueController : UdonSharpBehaviour
     [SerializeField] private GameObject cuetip;
 
     [UdonSynced] private int syncedCueSkin;
+    [UdonSynced] private Vector3 syncedCueSize;
     private int activeCueSkin;
+    private Vector3 activeCueSize;
 
     private bool holderIsDesktop;
     [UdonSynced] private bool syncedHolderIsDesktop;
@@ -58,6 +60,8 @@ public class CueController : UdonSharpBehaviour
         desktopController._Init(this);
 
         gripSize = 0.03f;
+        activeCueSize = new Vector3(1, 1, 1);
+        syncedCueSize = activeCueSize;
         cuetipDistance = (cuetip.transform.position - primary.transform.position).magnitude;
 
         origPrimaryPosition = primary.transform.position;
@@ -74,14 +78,22 @@ public class CueController : UdonSharpBehaviour
         string owner = Networking.GetOwner(this.gameObject).displayName;
 
         activeCueSkin = table._CanUseCueSkin(owner, syncedCueSkin) ? syncedCueSkin : 0;
+        activeCueSize = syncedCueSize;
 
         refreshCueSkin();
+        refreshCueSize();
     }
 
     private void refreshCueSkin()
     {
         MeshRenderer renderer = this.transform.Find("body/render").GetComponent<MeshRenderer>();
         renderer.materials[1].SetTexture("_MainTex", table.cueSkins[activeCueSkin]);
+    }
+
+    private void refreshCueSize()
+    {
+        Transform transform = this.transform.Find("body/render").GetComponent<Transform>();
+        transform.localScale = activeCueSize;
     }
 
     public override bool OnOwnershipRequest(VRCPlayerApi requester, VRCPlayerApi newOwner)
@@ -108,7 +120,7 @@ public class CueController : UdonSharpBehaviour
 
         lagPrimaryPosition = origPrimaryPosition;
         lagSecondaryPosition = origSecondaryPosition;
-        
+
         if (shouldReset && Array.IndexOf(authorizedOwners, Networking.LocalPlayer.displayName) != -1) resetPosition();
     }
 
@@ -250,8 +262,11 @@ public class CueController : UdonSharpBehaviour
         desktop.transform.localRotation = Quaternion.identity;
         body.transform.position = origPrimaryPosition;
         body.transform.LookAt(origSecondaryPosition);
+        activeCueSize = new Vector3(1, 1, 1);
+        syncedCueSize = activeCueSize;
+        refreshCueSize();
     }
-    
+
     public bool _IsOwnershipTransferAllowed(GameObject what, VRCPlayerApi requester, VRCPlayerApi newOwner)
     {
         if (requester.playerId != newOwner.playerId) return false;
@@ -270,6 +285,7 @@ public class CueController : UdonSharpBehaviour
         primaryHolding = true;
         primaryLocked = false;
         syncedCueSkin = table.activeCueSkin;
+        syncedCueSize = table.activeCueSize;
         RequestSerialization();
         OnDeserialization();
 
