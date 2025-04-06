@@ -253,9 +253,9 @@ public class GraphicsManager : UdonSharpBehaviour
                 settings += "Six Reds Snooker";
                 break;
         }
-        if (!string.IsNullOrEmpty(table.tournamentRefereeLocal))
+        if (!string.IsNullOrEmpty(table.playerManager.tournamentRefereeLocal))
         {
-            settings += $"\nTournament Mode ({table.tournamentRefereeLocal})";
+            settings += $"\nTournament Mode ({table.playerManager.tournamentRefereeLocal})";
         }
         string message = "Game Settings: " + settings;
         lobbyStatusText.text = message;

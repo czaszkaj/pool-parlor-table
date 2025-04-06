@@ -46,7 +46,7 @@ public class OwnershipManager : UdonSharpBehaviour
     {
         if (authorizedUsers == null) return true;
 
-        return Array.IndexOf(authorizedUsers, player.displayName) != -1 || table._IsModerator(player);
+        return Array.IndexOf(authorizedUsers, player.displayName) != -1 || table.playerManager._IsModerator(player);
     }
     
     public override bool OnOwnershipRequest(VRCPlayerApi requester, VRCPlayerApi newOwner)

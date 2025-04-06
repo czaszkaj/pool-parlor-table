@@ -500,7 +500,7 @@ public class NetworkingManager : UdonSharpBehaviour
 
     private void bufferMessages(bool urgent)
     {
-        if (table.gameLive && !(table._IsPlayer(Networking.LocalPlayer) || table._IsLocalPlayerReferee() || table._AllPlayersOffline()))
+        if (table.gameLive && !(table.playerManager._IsPlayer(Networking.LocalPlayer) || table.playerManager._IsLocalPlayerReferee() || table._AllPlayersOffline()))
         {
             table.logger._LogWarn("refusing to broadcast game state since local player is not playing in the current game");
             return;

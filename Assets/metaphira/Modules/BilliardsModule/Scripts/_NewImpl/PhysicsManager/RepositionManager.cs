@@ -43,7 +43,7 @@ public class RepositionManager : UdonSharpBehaviour
         for (int i = 0; i < repositioning.Length; i++)
         {
             if (!repositioning[i]) continue;
-            if (i > 0 && !table.isPracticeMode && !table._IsLocalPlayerReferee()) continue;
+            if (i > 0 && !table.isPracticeMode && !table.playerManager._IsLocalPlayerReferee()) continue;
 
             GameObject ball = table.balls[i];
 
@@ -58,7 +58,7 @@ public class RepositionManager : UdonSharpBehaviour
             {
                 maxX = k_pR.x;
             }
-            else if (table._IsLocalPlayerReferee())
+            else if (table.playerManager._IsLocalPlayerReferee())
             {
                 maxX = k_pR.x;
             }
@@ -161,13 +161,13 @@ public class RepositionManager : UdonSharpBehaviour
         {
             return false;
         }
-        if (!table._IsPlayer(self) && !table._IsReferee(self))
+        if (!table.playerManager._IsPlayer(self) && !table.playerManager._IsReferee(self))
         {
             return false;
         }
         if (grip.idx > 0)
         {
-            if (!table.isPracticeMode && !table._IsReferee(self))
+            if (!table.isPracticeMode && !table.playerManager._IsReferee(self))
             {
                 return false;
             }

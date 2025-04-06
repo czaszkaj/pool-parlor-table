@@ -127,13 +127,13 @@ public class MenuManager : UdonSharpBehaviour
         if (table.lobbyOpen)
         {
             // If in the game
-            if (table.localPlayerId >= 0)
+            if (table.playerManager.localPlayerId >= 0)
             {
                 buttonJoinOrange.gameObject.SetActive(false);
                 buttonJoinBlue.gameObject.SetActive(false);
 
                 // put the leave button where the join button for our team is
-                if (table.localTeamId == 0)
+                if (table.playerManager.localTeamId == 0)
                 {
                     buttonLeave.transform.localPosition = buttonJoinOrange.transform.localPosition;
                 }
@@ -145,15 +145,15 @@ public class MenuManager : UdonSharpBehaviour
                 buttonLeave.gameObject.SetActive(true);
 
                 // host can also start the game
-                buttonPlay.gameObject.SetActive(table.localPlayerId == 0);
+                buttonPlay.gameObject.SetActive(table.playerManager.localPlayerId == 0);
             }
             else // Otherwise, its just join buttons
             {
                 buttonPlay.gameObject.SetActive(false);
                 buttonLeave.gameObject.SetActive(false);
 
-                buttonJoinOrange.gameObject.SetActive(table.playerNamesLocal[0] == "" || (table.teamsLocal && table.playerNamesLocal[2] == ""));
-                buttonJoinBlue.gameObject.SetActive(table.playerNamesLocal[1] == "" || (table.teamsLocal && table.playerNamesLocal[3] == ""));
+                buttonJoinOrange.gameObject.SetActive(table.playerManager.playerNamesLocal[0] == "" || (table.teamsLocal && table.playerManager.playerNamesLocal[2] == ""));
+                buttonJoinBlue.gameObject.SetActive(table.playerManager.playerNamesLocal[1] == "" || (table.teamsLocal && table.playerManager.playerNamesLocal[3] == ""));
             }
         }
         else
@@ -169,7 +169,7 @@ public class MenuManager : UdonSharpBehaviour
     {
         for (int i = 0; i < (table.teamsLocal ? 4 : 2); i++)
         {
-            lobbyNames[i].text = table.managers.graphicsManager._FormatName(table.playerNamesLocal[i]);
+            lobbyNames[i].text = table.managers.graphicsManager._FormatName(table.playerManager.playerNamesLocal[i]);
         }
 
         refreshJoinButtons();
@@ -199,7 +199,7 @@ public class MenuManager : UdonSharpBehaviour
 
     public void _RefreshLobbyOpen()
     {
-        bool isNormalPlayer = table.localPlayerId != 0;
+        bool isNormalPlayer = table.playerManager.localPlayerId != 0;
         button8Ball.disableInteractions = isNormalPlayer;
         button9Ball.disableInteractions = isNormalPlayer;
         button4Ball.disableInteractions = isNormalPlayer;
@@ -220,87 +220,82 @@ public class MenuManager : UdonSharpBehaviour
     public void _OnButtonPressed() { onButtonPressed(inButton); }
     private void onButtonPressed(UIButton button)
     {
-        if (button.name == "StartButton")
+        if (table.playerManager.localPlayerId != 0)
         {
-            table._TriggerLobbyOpen();
-            table._TriggerJoinTeam(0);
-        }
-        else if (button.name == "JoinOrange")
-        {
-            table._TriggerJoinTeam(0);
-        }
-        else if (button.name == "JoinBlue")
-        {
-            table._TriggerJoinTeam(1);
-        }
-        else if (button.name == "LeaveButton")
-        {
-            // Close lobby
-            if (table.localPlayerId == 0)
+            // Options for first player
+            switch(button.name)
             {
-                table._TriggerLobbyClosed();
+                case "PlayButton":
+                    break;
+                case "8Ball":
+                    table._TriggerGameModeChanged(0);
+                    break;
+                case "9Ball":
+                    table._TriggerGameModeChanged(1);
+                    break;
+                case "4Ball":
+                case "4BallJP":
+                    table._TriggerGameModeChanged(2);
+                    break;
+                case "4BallKR":
+                    table._TriggerGameModeChanged(3);
+                    break;
+                case "Snooker6Red":
+                    table._TriggerGameModeChanged(4);
+                    break;
+                case "TeamsToggle":
+                    table._TriggerTeamsChanged(button.toggleState);
+                    break;
+                case "GuidelineToggle":
+                    table._TriggerNoGuidelineChanged(!button.toggleState);
+                    break;
+                case "LockingToggle":
+                    table._TriggerNoLockingChanged(!button.toggleState);
+                    break;
+                case "TimeRight":
+                    if (selectedTimer > 0)
+                    {
+                        selectedTimer--;
+
+                        table._TriggerTimerChanged(TIMER_VALUES[selectedTimer]);
+                    }
+                    break;
+                case "TimeLeft":
+                    if (selectedTimer < 3)
+                    {
+                        selectedTimer++;
+
+                        table._TriggerTimerChanged(TIMER_VALUES[selectedTimer]);
+                    }
+                    break;
+                case "LeaveButton":
+                    table._TriggerLobbyClosed();
+                    break;
+                default:
+                    // Continue with options for all players
+                    break;
             }
-            else
-            {
+        }
+
+        // Options for all player
+        switch(button.name)
+        {
+            case "StartButton":
+                table._TriggerLobbyOpen();
+                table._TriggerJoinTeam(0);
+                return;
+            case "JoinOrange":
+                table._TriggerJoinTeam(0);
+                return;
+            case "JoinBlue":
+                table._TriggerJoinTeam(1);
+                return;
+            case "LeaveButton":
                 table._TriggerLeaveLobby();
-            }
-        }
-        else if (table.localPlayerId == 0)
-        {
-            if (button.name == "PlayButton")
-            {
-                table._TriggerGameStart();
-            }
-            else if (button.name == "8Ball")
-            {
-                table._TriggerGameModeChanged(0);
-            }
-            else if (button.name == "9Ball")
-            {
-                table._TriggerGameModeChanged(1);
-            }
-            else if (button.name == "4Ball" || button.name == "4BallJP")
-            {
-                table._TriggerGameModeChanged(2);
-            }
-            else if (button.name == "4BallKR")
-            {
-                table._TriggerGameModeChanged(3);
-            }
-            else if (button.name == "Snooker6Red")
-            {
-                table._TriggerGameModeChanged(4);
-            }
-            else if (button.name == "TeamsToggle")
-            {
-                table._TriggerTeamsChanged(button.toggleState);
-            }
-            else if (button.name == "GuidelineToggle")
-            {
-                table._TriggerNoGuidelineChanged(!button.toggleState);
-            }
-            else if (button.name == "LockingToggle")
-            {
-                table._TriggerNoLockingChanged(!button.toggleState);
-            }
-            else if (button.name == "TimeRight")
-            {
-                if (selectedTimer > 0)
-                {
-                    selectedTimer--;
-
-                    table._TriggerTimerChanged(TIMER_VALUES[selectedTimer]);
-                }
-            }
-            else if (button.name == "TimeLeft")
-            {
-                if (selectedTimer < 3)
-                {
-                    selectedTimer++;
-
-                    table._TriggerTimerChanged(TIMER_VALUES[selectedTimer]);
-                }
-            }
+                return;
+            default:
+                // Unexpected? Do nothing
+                break;
         }
     }
     
@@ -314,7 +309,7 @@ public class MenuManager : UdonSharpBehaviour
 
         table.logger._LogInfo("joining table on team " + id);
 
-        if (table.localPlayerId == -1)
+        if (table.playerManager.localPlayerId == -1)
         {
             table._TriggerJoinTeam(id);
         }

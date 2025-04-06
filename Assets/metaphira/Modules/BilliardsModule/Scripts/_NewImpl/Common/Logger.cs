@@ -15,6 +15,7 @@ using VRC.SDKBase;
 using VRC.Udon;
 using System;
 
+// TODO: Make it static
 [UdonBehaviourSyncMode(BehaviourSyncMode.None)]
 public class Logger : UdonSharpBehaviour
 {
@@ -48,6 +49,7 @@ public class Logger : UdonSharpBehaviour
     private const string LOG_YES = "<color=\"#69D128\">";
     private const string LOG_END = "</color>";
 
+    // Why Init and not a CTOR? Maybe redo
     public void Init(BilliardsModule table_, NetworkingManager networkingManager_)
     {
         table = table_;

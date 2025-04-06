@@ -18,6 +18,8 @@ using Metaphira.Modules.CameraOverride;
 public class BilliardsModule : UdonSharpBehaviour
 {
     [SerializeField] [HideInInspector] public Logger logger;
+    [NonSerialized] [HideInInspector] public PlayerManager playerManager;
+
     #region InspectorValues
     [SerializeField] [HideInInspector] public Color k_colour_foul,        // v1.6: ( 1.2, 0.0, 0.0, 1.0 )
                                                     k_colour_default,     // v1.6: ( 1.0, 1.0, 1.0, 1.0 )
@@ -90,12 +92,7 @@ public class BilliardsModule : UdonSharpBehaviour
                                      ballsV = new Vector3[16],
                                      ballsW = new Vector3[16];
 
-    [NonSerialized] public string[] playerNamesCached = new string[4],
-                                    playerNamesLocal = new string[4];
-
     [NonSerialized] public int[] fbScoresLocal = new int[2];
-
-    [NonSerialized] public string tournamentRefereeLocal;
 
     [NonSerialized] public float repoMaxX;
 
@@ -129,8 +126,7 @@ public class BilliardsModule : UdonSharpBehaviour
                                 fourBallCueBallLocal,
                                 teamColorLocal,
                                 winningTeamLocal,
-                                previewWinningTeamLocal,
-                                localTeamId = 0u;
+                                previewWinningTeamLocal;
 
     [NonSerialized] public int activeCueSkin,
                                tableSkinLocal,
@@ -139,8 +135,7 @@ public class BilliardsModule : UdonSharpBehaviour
                                PERF_PHYSICS_VEL = 2,
                                PERF_PHYSICS_BALL = 3,
                                PERF_PHYSICS_CUSHION = 4,
-                               PERF_PHYSICS_POCKET = 5,
-                               localPlayerId = -1;
+                               PERF_PHYSICS_POCKET = 5;
 
     // table model properties
     [NonSerialized] public float k_TABLE_WIDTH, // horizontal span of table
@@ -183,7 +178,6 @@ public class BilliardsModule : UdonSharpBehaviour
     private uint[] initialBallsPocketed = new uint[5];
 
     private string[] LOG_LINES = new string[32];
-    private string[] moderators = new string[0];
     private string[] perfNames = new string[] {
       "main",
       "physics",
@@ -204,9 +198,7 @@ public class BilliardsModule : UdonSharpBehaviour
                 tableModelLocal,
                 firstHit = 0,
                 secondHit = 0,
-                thirdHit = 0,
-                LOG_LEN = 0,
-                LOG_PTR = 0;
+                thirdHit = 0;
 
     private uint repositionStateLocal,
                  ballsPocketedOrig;
@@ -219,6 +211,7 @@ public class BilliardsModule : UdonSharpBehaviour
 
     private void OnEnable()
     {
+        playerManager.Init(this);
         logger.Init(this, managers.networkingManager);
         logger._LogInfo("initializing billiards module");
 
@@ -288,22 +281,22 @@ public class BilliardsModule : UdonSharpBehaviour
 
         if (!lobbyOpen) return;
 
-        VRCPlayerApi gameHost = _GetPlayerByName(playerNamesLocal[0]);
+        VRCPlayerApi gameHost = _GetPlayerByName(playerManager.playerNamesLocal[0]);
         if (!Utilities.IsValid(gameHost))
         {
             // host left. if they were the only ones in-game, instance master tries to close the lobby. otherwise, everyone in-lobby tries
             int otherPlayers = 0;
             for (int i = 0; i < 4; i++)
             {
-                if (playerNamesLocal[i] == "") continue;
+                if (playerManager.playerNamesLocal[i] == "") continue;
 
-                VRCPlayerApi possiblePlayer = _GetPlayerByName(playerNamesLocal[i]);
+                VRCPlayerApi possiblePlayer = _GetPlayerByName(playerManager.playerNamesLocal[i]);
                 if (!Utilities.IsValid(possiblePlayer)) continue;
 
                 otherPlayers++;
             }
 
-            if ((otherPlayers == 0 && Networking.LocalPlayer.isMaster) || (otherPlayers > 0 && localPlayerId != -1))
+            if ((otherPlayers == 0 && Networking.LocalPlayer.isMaster) || (otherPlayers > 0 && playerManager.localPlayerId != -1))
             {
                 managers.networkingManager._OnLobbyClosed();
             }
@@ -313,9 +306,9 @@ public class BilliardsModule : UdonSharpBehaviour
             // only host updates player list
             for (int i = 0; i < 4; i++)
             {
-                if (playerNamesLocal[i] == "") continue;
+                if (playerManager.playerNamesLocal[i] == "") continue;
 
-                VRCPlayerApi possiblePlayer = _GetPlayerByName(playerNamesLocal[i]);
+                VRCPlayerApi possiblePlayer = _GetPlayerByName(playerManager.playerNamesLocal[i]);
                 if (Utilities.IsValid(possiblePlayer)) continue;
 
                 managers.networkingManager._OnKickLobby(i);
@@ -378,7 +371,7 @@ public class BilliardsModule : UdonSharpBehaviour
 
     public void _TriggerCueBallHit()
     {
-        if (localTeamId != teamIdLocal && !isPracticeMode) return; // is there a better way to do this?
+        if (playerManager.localTeamId != teamIdLocal && !isPracticeMode) return; // is there a better way to do this?
 
         logger._LogWarn("trying to propagate cue ball hit, linear velocity is " + ballsV[0].ToString("F4") + " and angular velocity is " + ballsW[0].ToString("F4"));
 
@@ -468,16 +461,16 @@ public class BilliardsModule : UdonSharpBehaviour
 
     public void _TriggerJoinTeam(int teamId)
     {
-        if (localPlayerId != -1) return;
+        if (playerManager.localPlayerId != -1) return;
 
         logger._LogInfo("joining team " + teamId);
 
-        localPlayerId = managers.networkingManager._OnJoinTeam(teamId);
-        if (localPlayerId != -1)
+        playerManager.localPlayerId = managers.networkingManager._OnJoinTeam(teamId);
+        if (playerManager.localPlayerId != -1)
         {
-            localTeamId = (uint)(localPlayerId & 0x1u);
+            playerManager.localTeamId = (uint)(playerManager.localPlayerId & 0x1u);
 
-            playerNamesLocal[localPlayerId] = Networking.LocalPlayer.displayName;
+            playerManager.playerNamesLocal[playerManager.localPlayerId] = Networking.LocalPlayer.displayName;
             managers.menuManager._RefreshLobbyOpen();
             managers.menuManager._RefreshPlayerList();
         }
@@ -489,14 +482,14 @@ public class BilliardsModule : UdonSharpBehaviour
 
     public void _TriggerLeaveLobby()
     {
-        if (localPlayerId == -1) return;
+        if (playerManager.localPlayerId == -1) return;
 
         logger._LogInfo("leaving lobby");
         
-        managers.networkingManager._OnLeaveLobby(localPlayerId);
-        playerNamesLocal[localPlayerId] = "";
-        localPlayerId = -1;
-        localTeamId = 0;
+        managers.networkingManager._OnLeaveLobby(playerManager.localPlayerId);
+        playerManager.playerNamesLocal[playerManager.localPlayerId] = "";
+        playerManager.localPlayerId = -1;
+        playerManager.localTeamId = 0;
         managers.menuManager._RefreshLobbyOpen();
         managers.menuManager._RefreshPlayerList();
     }
@@ -507,17 +500,17 @@ public class BilliardsModule : UdonSharpBehaviour
 
         if (!gameLive)
         {
-            if (lobbyOpen && _IsModerator(Networking.LocalPlayer))
+            if (lobbyOpen && playerManager._IsModerator(Networking.LocalPlayer))
             {
                 managers.networkingManager._OnLobbyClosed();
             }
             return;
         }
 
-        string[] allowedPlayers = playerNamesLocal;
-        if (!string.IsNullOrEmpty(tournamentRefereeLocal))
+        string[] allowedPlayers = playerManager.playerNamesLocal;
+        if (!string.IsNullOrEmpty(playerManager.tournamentRefereeLocal))
         {
-            allowedPlayers = new string[] { tournamentRefereeLocal };
+            allowedPlayers = new string[] { playerManager.tournamentRefereeLocal };
         }
 
         bool allPlayersOffline = true;
@@ -529,7 +522,7 @@ public class BilliardsModule : UdonSharpBehaviour
             if (allowedPlayer == self) isAllowedPlayer = true;
         }
 
-        if (allPlayersOffline || isAllowedPlayer || _IsModerator(Networking.LocalPlayer))
+        if (allPlayersOffline || isAllowedPlayer || playerManager._IsModerator(Networking.LocalPlayer))
         {
             logger._LogInfo("force resetting game");
 
@@ -602,7 +595,7 @@ public class BilliardsModule : UdonSharpBehaviour
         if (gameLive) return;
 
         if (
-            tournamentRefereeLocal == tournamentRefereeSynced &&
+            playerManager.tournamentRefereeLocal == tournamentRefereeSynced &&
             tableModelLocal == tableModelSynced &&
             tableSkinLocal == tableSkinSynced
         )
@@ -611,9 +604,9 @@ public class BilliardsModule : UdonSharpBehaviour
         }
         logger._LogInfo($"onRemoteGlobalSettingsUpdated tournamentReferee={tournamentRefereeSynced} tableModel={tableModelSynced} tableSkin={tableSkinSynced}");
 
-        if (tournamentRefereeLocal != tournamentRefereeSynced)
+        if (playerManager.tournamentRefereeLocal != tournamentRefereeSynced)
         {
-            tournamentRefereeLocal = tournamentRefereeSynced;
+            playerManager.tournamentRefereeLocal = tournamentRefereeSynced;
         }
 
         if (tableModelLocal != tableModelSynced)
@@ -676,25 +669,7 @@ public class BilliardsModule : UdonSharpBehaviour
     }
     private void onRemotePlayersChanged(string[] playerNamesSynced)
     {
-        if (stringArrayEquals(playerNamesCached, playerNamesSynced)) return;
-        Array.Copy(playerNamesSynced, playerNamesCached, playerNamesCached.Length);
-
-        string[] playerDetails = new string[4];
-        for (int i = 0; i < 4; i++)
-            playerDetails[i] = playerNamesSynced[i] == "" ? "none" : playerNamesSynced[i];
-
-        logger._LogInfo($"onRemotePlayersChanged newPlayers={string.Join(",", playerDetails)}");
-        
-        Array.Copy(playerNamesSynced, playerNamesLocal, playerNamesLocal.Length);
-
-        localPlayerId = Array.IndexOf(playerNamesLocal, Networking.LocalPlayer.displayName);
-        if (localPlayerId != -1) localTeamId = (uint)(localPlayerId & 0x1u);
-
-        cueControllers[0]._SetAuthorizedOwners(new string[] { playerNamesLocal[0], playerNamesLocal[2] });
-        cueControllers[1]._SetAuthorizedOwners(new string[] { playerNamesLocal[1], playerNamesLocal[3] });
-
-        managers.menuManager._RefreshLobbyOpen();
-        managers.menuManager._RefreshPlayerList();
+        playerManager.onRemotePlayersChanged(playerNamesSynced);
     }
 
     private void onRemoteGameStateChanged(byte gameStateSynced)
@@ -737,7 +712,7 @@ public class BilliardsModule : UdonSharpBehaviour
         logger._LogInfo($"onRemoteLobbyClosed");
 
         lobbyOpen = false;
-        localPlayerId = -1;
+        playerManager.localPlayerId = -1;
         managers.graphicsManager._OnLobbyClosed();
         managers.menuManager._RefreshLobbyOpen();
 
@@ -757,7 +732,7 @@ public class BilliardsModule : UdonSharpBehaviour
         Array.Clear(perfStart, 0, PERF_MAX);
         Array.Clear(perfTimings, 0, PERF_MAX);
 
-        isPracticeMode = playerNamesLocal[1] == "" && playerNamesLocal[3] == "";
+        isPracticeMode = playerManager.playerNamesLocal[1] == "" && playerManager.playerNamesLocal[3] == "";
 
         managers.menuManager._DisableMenu();
 
@@ -784,7 +759,7 @@ public class BilliardsModule : UdonSharpBehaviour
         managers.graphicsManager._PlayIntroAnimation();
         aud_main.PlayOneShot(snd_Intro, 1.0f);
 
-        managers.graphicsManager._SetScorecardPlayers(playerNamesLocal);
+        managers.graphicsManager._SetScorecardPlayers(playerManager.playerNamesLocal);
 
         timerRunning = false;
 
@@ -795,7 +770,7 @@ public class BilliardsModule : UdonSharpBehaviour
 
     private void onRemoteBallPositionsChanged(Vector3[] ballsPSynced)
     {
-        if (vector3ArrayEquals(ballsP, ballsPSynced)) return;
+        if (ballsP.Equals(ballsPSynced)) return;
 
         logger._LogInfo($"onRemoteBallPositionsChanged");
 
@@ -806,7 +781,7 @@ public class BilliardsModule : UdonSharpBehaviour
     private void onRemotePreviewWinningTeamChanged(uint previewWinningTeamSynced)
     {
         if (!gameLive) return;
-        if (string.IsNullOrEmpty(tournamentRefereeLocal)) return;
+        if (string.IsNullOrEmpty(playerManager.tournamentRefereeLocal)) return;
 
         if (previewWinningTeamLocal == previewWinningTeamSynced) return;
 
@@ -816,7 +791,7 @@ public class BilliardsModule : UdonSharpBehaviour
         if (previewWinningTeamSynced == 2)
             managers.graphicsManager._ResetWinners();
         else
-            managers.graphicsManager._SetWinners(isPracticeMode ? 0u : previewWinningTeamSynced, playerNamesLocal);
+            managers.graphicsManager._SetWinners(isPracticeMode ? 0u : previewWinningTeamSynced, playerManager.playerNamesLocal);
     }
 
     private void onRemoteGameEnded(uint winningTeamSynced)
@@ -825,7 +800,7 @@ public class BilliardsModule : UdonSharpBehaviour
 
         isLocalSimulationRunning = false;
 
-        if (!string.IsNullOrEmpty(tournamentRefereeLocal))
+        if (!string.IsNullOrEmpty(playerManager.tournamentRefereeLocal))
         {
             // tournament mode has some special logic
             if (winningTeamSynced != 2u)
@@ -850,8 +825,8 @@ public class BilliardsModule : UdonSharpBehaviour
         }
         else
         {
-            logger._LogWarn("game over, team " + winningTeamLocal + " won (" + playerNamesLocal[winningTeamLocal] + " and " + playerNamesLocal[winningTeamLocal + 2] + ")");
-            managers.graphicsManager._SetWinners(isPracticeMode ? 0u : winningTeamLocal, playerNamesLocal);
+            logger._LogWarn("game over, team " + winningTeamLocal + " won (" + playerManager.playerNamesLocal[winningTeamLocal] + " and " + playerManager.playerNamesLocal[winningTeamLocal + 2] + ")");
+            managers.graphicsManager._SetWinners(isPracticeMode ? 0u : winningTeamLocal, playerManager.playerNamesLocal);
         }
 
         gameLive = false;
@@ -867,8 +842,8 @@ public class BilliardsModule : UdonSharpBehaviour
         this.transform.Find("intl.controls/skipturn").gameObject.SetActive(false);
 
         // Remove any access rights
-        localPlayerId = -1;
-        localTeamId = 0;
+        playerManager.localPlayerId = -1;
+        playerManager.localTeamId = 0;
         applyCueAccess(true);
 
         resetCachedData();
@@ -1017,7 +992,7 @@ public class BilliardsModule : UdonSharpBehaviour
         canPlayLocal = false;
         disablePlayComponents();
 
-        if (!_IsPlayer(Networking.LocalPlayer) && !table.GetComponent<MeshRenderer>().isVisible)
+        if (!playerManager._IsPlayer(Networking.LocalPlayer) && !table.GetComponent<MeshRenderer>().isVisible)
         {
             // don't bother simulating if the table isn't even visible
             logger._LogWarn("skipping simulation");
@@ -1633,7 +1608,7 @@ public class BilliardsModule : UdonSharpBehaviour
     {
         for (int i = 0; i < 4; i++)
         {
-            playerNamesLocal[i] = "";
+            playerManager.playerNamesLocal[i] = "";
         }
         repositionStateLocal = 0;
         gameModeLocal = uint.MaxValue;
@@ -1729,7 +1704,7 @@ public class BilliardsModule : UdonSharpBehaviour
     {
         logger._LogInfo($"onLocalTeamWin {(winner)}");
 
-        if (string.IsNullOrEmpty(tournamentRefereeLocal))
+        if (string.IsNullOrEmpty(playerManager.tournamentRefereeLocal))
             managers.networkingManager._OnGameWin(winner);
         else
             managers.networkingManager._OnPreviewWinner(winner);
@@ -1793,7 +1768,7 @@ public class BilliardsModule : UdonSharpBehaviour
 
         managers.graphicsManager._HideTimers();
 
-        if (string.IsNullOrEmpty(tournamentRefereeLocal))
+        if (string.IsNullOrEmpty(playerManager.tournamentRefereeLocal))
         {
             // no one is allowed to play
             canPlayLocal = false;
@@ -1808,7 +1783,7 @@ public class BilliardsModule : UdonSharpBehaviour
 
     private void applyCueAccess(bool gameOver)
     {
-        switch (localPlayerId)
+        switch (playerManager.localPlayerId)
         {
             case -1:
                 cueControllers[0]._Disable(gameOver);
@@ -1830,7 +1805,7 @@ public class BilliardsModule : UdonSharpBehaviour
     {
         bool isOurTurnVar = isOurTurn();
 
-        if ((isOurTurnVar && isPracticeMode) || (!string.IsNullOrEmpty(tournamentRefereeLocal) && _IsLocalPlayerReferee()))
+        if ((isOurTurnVar && isPracticeMode) || (!string.IsNullOrEmpty(playerManager.tournamentRefereeLocal) && playerManager._IsLocalPlayerReferee()))
         {
             this.transform.Find("intl.controls/undo").gameObject.SetActive(true);
             this.transform.Find("intl.controls/redo").gameObject.SetActive(true);
@@ -1864,7 +1839,7 @@ public class BilliardsModule : UdonSharpBehaviour
 
     public void _SkipTurn()
     {
-        if (isPracticeMode || (!string.IsNullOrEmpty(tournamentRefereeLocal) && _IsLocalPlayerReferee()))
+        if (isPracticeMode || (!string.IsNullOrEmpty(playerManager.tournamentRefereeLocal) && playerManager._IsLocalPlayerReferee()))
         {
             onLocalTurnFoul();
         }
@@ -1927,7 +1902,7 @@ public class BilliardsModule : UdonSharpBehaviour
 
     private void refreshBallPickups()
     {
-        bool canUsePickup = (isOurTurn() && isPracticeMode) || (!string.IsNullOrEmpty(tournamentRefereeLocal) && _IsLocalPlayerReferee());
+        bool canUsePickup = (isOurTurn() && isPracticeMode) || (!string.IsNullOrEmpty(playerManager.tournamentRefereeLocal) && playerManager._IsLocalPlayerReferee());
 
         uint ball_bit = 0x1u;
         for (int i = 0; i < balls.Length; i++)
@@ -1951,7 +1926,7 @@ public class BilliardsModule : UdonSharpBehaviour
         {
             setBallPickupActive(0, true);
         }
-        else if (!isPracticeMode && !(!string.IsNullOrEmpty(tournamentRefereeLocal) && _IsLocalPlayerReferee()))
+        else if (!isPracticeMode && !(!string.IsNullOrEmpty(playerManager.tournamentRefereeLocal) && playerManager._IsLocalPlayerReferee()))
         {
             setBallPickupActive(0, false);
         }
@@ -1975,16 +1950,16 @@ public class BilliardsModule : UdonSharpBehaviour
 
     private bool isOurTurn()
     {
-        return localPlayerId >= 0 && (localTeamId == teamIdLocal || isPracticeMode);
+        return playerManager.localPlayerId >= 0 && (playerManager.localTeamId == teamIdLocal || isPracticeMode);
     }
 
     public bool _AllPlayersOffline()
     {
         for (int i = 0; i < 4; i++)
         {
-            if (playerNamesLocal[i] == "") continue;
+            if (playerManager.playerNamesLocal[i] == "") continue;
 
-            VRCPlayerApi player = _GetPlayerByName(playerNamesLocal[i]);
+            VRCPlayerApi player = _GetPlayerByName(playerManager.playerNamesLocal[i]);
             if (Utilities.IsValid(player))
                 return false;
         }
@@ -2018,10 +1993,10 @@ public class BilliardsModule : UdonSharpBehaviour
 
     public void _LoadSerializedGameState(string gameState)
     {
-        if (string.IsNullOrEmpty(tournamentRefereeLocal))
+        if (string.IsNullOrEmpty(playerManager.tournamentRefereeLocal))
         {
             // no loading on top of other people's games
-            if (!_IsPlayer(Networking.LocalPlayer)) return;
+            if (!playerManager._IsPlayer(Networking.LocalPlayer)) return;
 
             // no loading outside of practice
             if (!isPracticeMode) return;
@@ -2029,7 +2004,7 @@ public class BilliardsModule : UdonSharpBehaviour
         else
         {
             // only host can load on top of tournament
-            if (!_IsLocalPlayerReferee()) return;
+            if (!playerManager._IsLocalPlayerReferee()) return;
         }
 
         managers.networkingManager._OnLoadGameState(gameState);
@@ -2086,6 +2061,7 @@ public class BilliardsModule : UdonSharpBehaviour
 
     public bool _AreInMemoryStatesEqual(object[] a, object[] b)
     {
+        // Use Equal or SequenceEqual from Array lib
         Vector3[] posA = (Vector3[])a[0];
         Vector3[] posB = (Vector3[])b[0];
         for (int i = 0; i < ballsP.Length; i++) if (posA[i] != posB[i]) return false;
@@ -2099,69 +2075,5 @@ public class BilliardsModule : UdonSharpBehaviour
         return true;
     }
 
-    public bool _IsLocalPlayerReferee()
-    {
-        return _IsReferee(Networking.LocalPlayer);
-    }
-
-    public bool _IsModerator(VRCPlayerApi player)
-    {
-        return Array.IndexOf(moderators, player.displayName) != -1;
-    }
-
-    public bool _IsReferee(VRCPlayerApi player)
-    {
-        if (player == null) return false;
-
-        if (string.IsNullOrEmpty(tournamentRefereeLocal)) return false;
-
-        return player.displayName == tournamentRefereeLocal || _IsModerator(player);
-    }
-
-    public bool _IsPlayer(VRCPlayerApi who)
-    {
-        if (who == null) return false;
-        if (who.isLocal && localPlayerId >= 0) return true;
-
-        for (int i = 0; i < 4; i++)
-        {
-            if (playerNamesLocal[i] == who.displayName)
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private bool stringArrayEquals(string[] a, string[] b)
-    {
-        if (a.Length != b.Length) return false;
-        for (int i = 0; i < a.Length; i++)
-        {
-            if (a[i] != b[i]) return false;
-        }
-        return true;
-    }
-
-    private bool intArrayEquals(int[] a, int[] b)
-    {
-        if (a.Length != b.Length) return false;
-        for (int i = 0; i < a.Length; i++)
-        {
-            if (a[i] != b[i]) return false;
-        }
-        return true;
-    }
-
-    private bool vector3ArrayEquals(Vector3[] a, Vector3[] b)
-    {
-        if (a.Length != b.Length) return false;
-        for (int i = 0; i < a.Length; i++)
-        {
-            if (a[i] != b[i]) return false;
-        }
-        return true;
-    }
     #endregion
 }
