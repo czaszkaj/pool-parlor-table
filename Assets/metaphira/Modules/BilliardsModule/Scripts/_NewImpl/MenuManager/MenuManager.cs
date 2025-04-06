@@ -312,7 +312,7 @@ public class MenuManager : UdonSharpBehaviour
             table._TriggerLobbyOpen();
         }
 
-        table._LogInfo("joining table on team " + id);
+        table.logger._LogInfo("joining table on team " + id);
 
         if (table.localPlayerId == -1)
         {

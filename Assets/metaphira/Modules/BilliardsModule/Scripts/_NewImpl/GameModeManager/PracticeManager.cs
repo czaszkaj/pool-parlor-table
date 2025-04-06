@@ -82,7 +82,7 @@ public class PracticeManager : UdonSharpBehaviour
             latestPtr = stateIdLocal;
         }
         
-        table._LogInfo($"recording state current={currentPtr} latest={latestPtr}");
+        table.logger._LogInfo($"recording state current={currentPtr} latest={latestPtr}");
     }
 
     public void _Undo()
@@ -154,7 +154,7 @@ public class PracticeManager : UdonSharpBehaviour
     {
         if (table.isLocalSimulationRunning)
         {
-            table._LogInfo("interrupting simulation and loading new state");
+            table.logger._LogInfo("interrupting simulation and loading new state");
         }
         
         object[] state = (object[])history[newPtr];

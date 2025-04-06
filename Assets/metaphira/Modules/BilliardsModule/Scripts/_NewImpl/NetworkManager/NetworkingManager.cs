@@ -502,7 +502,7 @@ public class NetworkingManager : UdonSharpBehaviour
     {
         if (table.gameLive && !(table._IsPlayer(Networking.LocalPlayer) || table._IsLocalPlayerReferee() || table._AllPlayersOffline()))
         {
-            table._LogWarn("refusing to broadcast game state since local player is not playing in the current game");
+            table.logger._LogWarn("refusing to broadcast game state since local player is not playing in the current game");
             return;
         }
 

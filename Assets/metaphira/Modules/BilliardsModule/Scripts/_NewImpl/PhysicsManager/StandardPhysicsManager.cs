@@ -83,9 +83,9 @@ public class StandardPhysicsManager : UdonSharpBehaviour
         float newAccumulatedTime = Mathf.Clamp(accumulatedTime + Time.fixedDeltaTime, 0, k_MAX_DELTA);
         while (newAccumulatedTime >= k_FIXED_TIME_STEP)
         {
-            table._BeginPerf(table.PERF_PHYSICS_MAIN);
+            table.logger._BeginPerf(table.PERF_PHYSICS_MAIN);
             tickOnce();
-            table._EndPerf(table.PERF_PHYSICS_MAIN);
+            table.logger._EndPerf(table.PERF_PHYSICS_MAIN);
             newAccumulatedTime -= k_FIXED_TIME_STEP;
         }
 
@@ -238,7 +238,7 @@ public class StandardPhysicsManager : UdonSharpBehaviour
         uint sn_pocketed = table.ballsPocketedLocal;
 
         // Cue angular velocity
-        table._BeginPerf(table.PERF_PHYSICS_BALL);
+        table.logger._BeginPerf(table.PERF_PHYSICS_BALL);
         bool[] moved = new bool[balls.Length];
 
         if ((sn_pocketed & 0x1U) == 0)
@@ -276,7 +276,7 @@ public class StandardPhysicsManager : UdonSharpBehaviour
                 ballsMoving |= stepOneBall(i, sn_pocketed, moved);
             }
         }
-        table._EndPerf(table.PERF_PHYSICS_BALL);
+        table.logger._EndPerf(table.PERF_PHYSICS_BALL);
 
         // Check if simulation has settled
         if (!ballsMoving)
@@ -287,7 +287,7 @@ public class StandardPhysicsManager : UdonSharpBehaviour
 
         bool canCueBallBounceOffCushion = balls_P[0].y < k_BALL_RADIUS;
 
-        table._BeginPerf(table.PERF_PHYSICS_CUSHION);
+        table.logger._BeginPerf(table.PERF_PHYSICS_CUSHION);
         if (table.is4Ball)
         {
             if (canCueBallBounceOffCushion && moved[0]) _phy_ball_table_carom(0);
@@ -309,7 +309,7 @@ public class StandardPhysicsManager : UdonSharpBehaviour
                 ball_bit <<= 1;
             }
         }
-        table._EndPerf(table.PERF_PHYSICS_CUSHION);
+        table.logger._EndPerf(table.PERF_PHYSICS_CUSHION);
 
         bool outOfBounds = false;
         if ((sn_pocketed & 0x01u) == 0x00u)
@@ -317,7 +317,7 @@ public class StandardPhysicsManager : UdonSharpBehaviour
             if (Mathf.Abs(balls_P[0].x) > table.k_TABLE_WIDTH + 0.1 || Mathf.Abs(balls_P[0].z) > table.k_TABLE_HEIGHT + 0.1)
             {
                 table._TriggerPocketBall(0);
-                table._Log("out of bounds! " + balls_P[0].ToString());
+                table.logger._Log("out of bounds! " + balls_P[0].ToString());
                 outOfBounds = true;
             }
         }
@@ -327,7 +327,7 @@ public class StandardPhysicsManager : UdonSharpBehaviour
         ball_bit = 0x1U;
 
         // Run triggers
-        table._BeginPerf(table.PERF_PHYSICS_POCKET);
+        table.logger._BeginPerf(table.PERF_PHYSICS_POCKET);
         for (int i = 0; i < 16; i++)
         {
             if (moved[i] && (ball_bit & sn_pocketed) == 0U && (i != 0 || !outOfBounds))
@@ -340,7 +340,7 @@ public class StandardPhysicsManager : UdonSharpBehaviour
 
             ball_bit <<= 1;
         }
-        table._EndPerf(table.PERF_PHYSICS_POCKET);
+        table.logger._EndPerf(table.PERF_PHYSICS_POCKET);
     }
 
     private Vector3 calculateDeltaPosition(uint sn_pocketed)
@@ -787,7 +787,7 @@ public class StandardPhysicsManager : UdonSharpBehaviour
         {
             table.pockets[i].SetActive(false);
         }
-        MeshCollider collider = table.table.GetComponent<MeshCollider>();
+        MeshCollider collider = table.GetComponent<MeshCollider>();
         if (collider != null) collider.enabled = false;
         collider = table.auto_pocketblockers.GetComponent<MeshCollider>();
         if (collider != null) collider.enabled = false;
@@ -1277,7 +1277,7 @@ public class StandardPhysicsManager : UdonSharpBehaviour
 
         float k_CUE_MASS = 0.5f; // kg
         float F = 2 * k_BALL_MASS * V0 / (1 + k_BALL_MASS / k_CUE_MASS + 5 / (2 * k_BALL_RADIUS) * (Mathf.Pow(a, 2) + Mathf.Pow(b, 2) * Mathf.Pow(cosTheta, 2) + Mathf.Pow(c, 2) * Mathf.Pow(sinTheta, 2) - 2 * b * c * cosTheta * sinTheta));
-        table._LogWarn("cue ball was hit at (" + a.ToString("F2") + "," + b.ToString("F2") + "," + c.ToString("F2") + ") with angle " + theta * Mathf.Rad2Deg + " and initial velocity " + V0.ToString("F2") + "m/s");
+        table.logger._LogWarn("cue ball was hit at (" + a.ToString("F2") + "," + b.ToString("F2") + "," + c.ToString("F2") + ") with angle " + theta * Mathf.Rad2Deg + " and initial velocity " + V0.ToString("F2") + "m/s");
 
         float I = 2f / 5f * k_BALL_MASS * Mathf.Pow(k_BALL_RADIUS, 2);
         Vector3 v = new Vector3(0, -F / k_BALL_MASS * cosTheta, -F / k_BALL_MASS * sinTheta);
@@ -1286,7 +1286,7 @@ public class StandardPhysicsManager : UdonSharpBehaviour
         // the paper is inconsistent here. either w.x is inverted (i.e. the i axis points right instead of left) or b is inverted (which means F is wrong too)
         // for my sanity I'm going to assume the former
         w.x = -w.x;
-        table._LogWarn("initial cue ball velocities are v=" + v + ", w=" + w);
+        table.logger._LogWarn("initial cue ball velocities are v=" + v + ", w=" + w);
 
         float m_e = 0.02f;
 
@@ -1305,7 +1305,7 @@ public class StandardPhysicsManager : UdonSharpBehaviour
         {
             // no scooping
             v.y = 0;
-            table._Log("prevented scooping");
+            table.logger._Log("prevented scooping");
         }
         else if (v.y < 0)
         {
@@ -1315,13 +1315,13 @@ public class StandardPhysicsManager : UdonSharpBehaviour
             {
                 // not enough strength to be a jump shot
                 v.y = 0;
-                table._Log("not enough strength for jump shot (" + k_MIN_HORIZONTAL_VEL + " vs " + v.z + ")");
+                table.logger._Log("not enough strength for jump shot (" + k_MIN_HORIZONTAL_VEL + " vs " + v.z + ")");
             }
             else
             {
                 // dampen y velocity because the table will eat a lot of energy (we're driving the ball straight into it)
                 v.y = -v.y * 0.35f;
-                table._Log("dampening to " + v.y);
+                table.logger._Log("dampening to " + v.y);
             }
         }
 

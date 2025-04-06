@@ -8,6 +8,10 @@ using System;
 [UdonBehaviourSyncMode(BehaviourSyncMode.None)]
 public class ManagerController : UdonSharpBehaviour
 {
+    // Move it to the table in the end
+    // It's an obsulete middle class, it dies what the table doeas
+    // Fine for now while the whole implementation is just a mess
+
     [Header("Managers")]
     [SerializeField] public NetworkingManager networkingManager;
     [SerializeField] public PracticeManager practiceManager;
