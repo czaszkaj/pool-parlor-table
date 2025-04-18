@@ -143,7 +143,7 @@ public class Logger : UdonSharpBehaviour
             colorTextState("net", "#95a2b8", "OWNER", "#4287F5"):
             colorTextState("net", "#95a2b8", "RECVR", "#678AC2");
 
-        output += table.isLocalSimulationRunning ?
+        output += isLocalSimulationRunning ?
             colorTextState("sim", "#95a2b8", "ACTIVE", "#4287F5"):
             colorTextState("sim", "#95a2b8", "PAUSED", "#678AC2");
 

@@ -39,11 +39,6 @@ public class StandardPhysicsManager : UdonSharpBehaviour
 
     private float accumulatedTime;
     private float lastTimestamp;
-
-    private GameObject[] balls;
-    private Vector3[] balls_P;
-    private Vector3[] balls_V;
-    private Vector3[] balls_W;
     private float k_INNER_RADIUS;
     private float k_INNER_RADIUS_SQ;
 
@@ -59,12 +54,6 @@ public class StandardPhysicsManager : UdonSharpBehaviour
         table = table_;
 
         _InitConstants();
-
-        // copy some pointers
-        balls = table.balls;
-        balls_P = table.ballsP;
-        balls_V = table.ballsV;
-        balls_W = table.ballsW;
     }
 
     public void _FixedTick()
@@ -73,12 +62,12 @@ public class StandardPhysicsManager : UdonSharpBehaviour
         float delta = now - lastTimestamp;
         lastTimestamp = now;
 
-        if (table.gameLive)
+        if (table.game.gameLive)
         {
             tickCue();
         }
 
-        if (!table.isLocalSimulationRunning) return;
+        if (!table.game.isLocalSimulationRunning) return;
 
         float newAccumulatedTime = Mathf.Clamp(accumulatedTime + Time.fixedDeltaTime, 0, k_MAX_DELTA);
         while (newAccumulatedTime >= k_FIXED_TIME_STEP)
@@ -100,27 +89,27 @@ public class StandardPhysicsManager : UdonSharpBehaviour
         Vector3 lpos2 = cue_lpos;
 
         // if shot is prepared for next hit
-        if (table.canPlayLocal)
+        if (table.game.table.canPlayLocal)
         {
             bool isContact = false;
 
-            if (table.isReposition)
+            if (table.game.table.isReposition)
             {
-                table.markerObj.transform.position = balls[0].transform.position;
+                table.game.table.balls.markerObj.transform.position = table.game.table.balls.getBallPosition(0);
                 isContact = isCueBallTouching();
                 if (isContact)
                 {
-                    table.markerObj.GetComponent<MeshRenderer>().material.SetColor("_Color", markerColorNo);
+                    table.game.table.balls.markerObj.GetComponent<MeshRenderer>().material.SetColor("_Color", markerColorNo);
                 }
                 else
                 {
-                    table.markerObj.GetComponent<MeshRenderer>().material.SetColor("_Color", markerColorYes);
+                    table.game.table.balls.markerObj.GetComponent<MeshRenderer>().material.SetColor("_Color", markerColorYes);
                 }
             }
 
-            Vector3 cueball_pos = balls_P[0];
+            Vector3 cueball_pos = table.game.table.balls.ballsP[0];
 
-            if (table.canHitCueBall && !isContact)
+            if (table.game.table.canHitCueBall && !isContact)
             {
                 float sweep_time_ball = Vector3.Dot(cueball_pos - cue_llpos, cue_vdir);
 
@@ -148,15 +137,15 @@ public class StandardPhysicsManager : UdonSharpBehaviour
                 // Get where the cue will strike the ball
                 if (_phy_ray_sphere(lpos2, cue_vdir, cueball_pos))
                 {
-                    if (!table.noGuidelineLocal)
+                    if (!table.game.table.common.guideLineEnabledLocal)
                     {
-                        table.guideline.SetActive(true);
-                        table.devhit.SetActive(true);
+                        table.game.table.cues.guideline.SetActive(true);
+                        table.game.table.cues.devhit.SetActive(true);
                     }
-                    table.devhit.transform.localPosition = RaySphere_output;
+                    table.game.table.cues.devhit.transform.localPosition = RaySphere_output;
 
                     Vector3 q = transform_Surface.InverseTransformDirection(cuetip.transform.forward); // direction of cue in surface space
-                    Vector3 o = balls[0].transform.localPosition; // location of ball in surface
+                    Vector3 o = table.game.table.balls.getBallLocalPosition(0); // location of ball in surface
 
                     Vector3 j = -Vector3.ProjectOnPlane(q, transform_Surface.up); // project cue direction onto table surface, gives us j
                     Vector3 k = transform_Surface.up;
@@ -216,13 +205,13 @@ public class StandardPhysicsManager : UdonSharpBehaviour
                     cue_fdir = Mathf.Atan2(cue_shotdir.z, cue_shotdir.x);
 
                     // Update the prediction line direction
-                    table.guideline.transform.localPosition = balls_P[0];
-                    table.guideline.transform.localEulerAngles = new Vector3(0.0f, -cue_fdir * Mathf.Rad2Deg, 0.0f);
+                    table.game.table.cues.guideline.transform.localPosition = table.game.table.balls.getBallP(0);
+                    table.game.table.cues.guideline.transform.localEulerAngles = new Vector3(0.0f, -cue_fdir * Mathf.Rad2Deg, 0.0f);
                 }
                 else
                 {
-                    table.devhit.SetActive(false);
-                    table.guideline.SetActive(false);
+                    table.game.table.cues.devhit.SetActive(false);
+                    table.game.table.cues.guideline.SetActive(false);
                 }
             }
         }
@@ -235,23 +224,23 @@ public class StandardPhysicsManager : UdonSharpBehaviour
     {
         bool ballsMoving = false;
 
-        uint sn_pocketed = table.ballsPocketedLocal;
+        uint sn_pocketed = table.game.table.balls.ballsPocketedLocal;
 
         // Cue angular velocity
         table.logger._BeginPerf(table.PERF_PHYSICS_BALL);
-        bool[] moved = new bool[balls.Length];
+        bool[] moved = new bool[table.game.table.balls.getBallsLength()];
 
         if ((sn_pocketed & 0x1U) == 0)
         {
-            if (balls_P[0].y < 0)
+            if (table.game.table.balls.ballsP[0].y < 0)
             {
-                balls_P[0].y = 0;
-                balls_P[0].y = -balls_P[0].y * 0.5f; // bounce with restitution
+                table.game.table.balls.ballsP[0].y = 0;
+                table.game.table.balls.ballsP[0].y = -table.game.table.balls.ballsP[0].y * 0.5f; // bounce with restitution
             }
 
             // Apply movement
             Vector3 deltaPos = calculateDeltaPosition(sn_pocketed);
-            balls_P[0] += deltaPos;
+            table.game.table.balls.ballsP[0] += deltaPos;
             moved[0] = deltaPos != Vector3.zero;
 
             ballsMoving |= stepOneBall(0, sn_pocketed, moved);
@@ -266,11 +255,11 @@ public class StandardPhysicsManager : UdonSharpBehaviour
 
             if ((ball_bit & sn_pocketed) == 0U)
             {
-                balls_V[i].y = 0;
-                balls_P[i].y = 0;
+                table.game.table.balls.ballsV[i].y = 0;
+                table.game.table.balls.ballsP[i].y = 0;
 
-                Vector3 deltaPos = balls_V[i] * k_FIXED_TIME_STEP;
-                balls_P[i] += deltaPos;
+                Vector3 deltaPos = table.game.table.balls.ballsV[i] * k_FIXED_TIME_STEP;
+                table.game.table.balls.ballsP[i] += deltaPos;
                 moved[i] = deltaPos != Vector3.zero;
 
                 ballsMoving |= stepOneBall(i, sn_pocketed, moved);
@@ -285,10 +274,10 @@ public class StandardPhysicsManager : UdonSharpBehaviour
             return;
         }
 
-        bool canCueBallBounceOffCushion = balls_P[0].y < k_BALL_RADIUS;
+        bool canCueBallBounceOffCushion = table.game.table.balls.ballsP[0].y < k_BALL_RADIUS;
 
         table.logger._BeginPerf(table.PERF_PHYSICS_CUSHION);
-        if (table.is4Ball)
+        if (table.game.table.is4Ball)
         {
             if (canCueBallBounceOffCushion && moved[0]) _phy_ball_table_carom(0);
             if (moved[13]) _phy_ball_table_carom(13);
@@ -314,15 +303,15 @@ public class StandardPhysicsManager : UdonSharpBehaviour
         bool outOfBounds = false;
         if ((sn_pocketed & 0x01u) == 0x00u)
         {
-            if (Mathf.Abs(balls_P[0].x) > table.k_TABLE_WIDTH + 0.1 || Mathf.Abs(balls_P[0].z) > table.k_TABLE_HEIGHT + 0.1)
+            if (Mathf.Abs(table.game.table.balls.ballsP[0].x) > table.k_TABLE_WIDTH + 0.1 || Mathf.Abs(table.game.table.balls.ballsP[0].z) > table.k_TABLE_HEIGHT + 0.1)
             {
                 table._TriggerPocketBall(0);
-                table.logger._Log("out of bounds! " + balls_P[0].ToString());
+                table.logger._Log("out of bounds! " + table.game.table.balls.ballsP[0].ToString());
                 outOfBounds = true;
             }
         }
 
-        if (table.is4Ball) return;
+        if (table.game.table.is4Ball) return;
 
         ball_bit = 0x1U;
 
@@ -334,7 +323,7 @@ public class StandardPhysicsManager : UdonSharpBehaviour
             {
                 if (i != 0 || canCueBallBounceOffCushion)
                 {
-                    _phy_ball_pockets(i, balls_P);
+                    _phy_ball_pockets(i);
                 }
             }
 
@@ -346,9 +335,9 @@ public class StandardPhysicsManager : UdonSharpBehaviour
     private Vector3 calculateDeltaPosition(uint sn_pocketed)
     {
         // Get what will be the next position
-        Vector3 originalDelta = balls_V[0] * k_FIXED_TIME_STEP;
+        Vector3 originalDelta = table.game.table.balls.ballsV[0] * k_FIXED_TIME_STEP;
 
-        Vector3 norm = balls_V[0].normalized;
+        Vector3 norm = table.game.table.balls.ballsV[0].normalized;
 
         Vector3 h;
         float lf, s, nmag;
@@ -369,7 +358,7 @@ public class StandardPhysicsManager : UdonSharpBehaviour
             if ((ball_bit & sn_pocketed) != 0U)
                 continue;
 
-            h = balls_P[i] - balls_P[0];
+            h = table.game.table.balls.ballsP[i] - table.game.table.balls.ballsP[0];
             lf = Vector3.Dot(norm, h);
             if (lf < 0f) continue;
 
@@ -403,12 +392,12 @@ public class StandardPhysicsManager : UdonSharpBehaviour
     // Advance simulation 1 step for ball id
     private bool stepOneBall(int id, uint sn_pocketed, bool[] moved)
     {
-        GameObject g_ball_current = balls[id];
+        GameObject g_ball_current = table.game.table.balls.balls[id];
 
         bool isBallMoving = false;
 
         // no point updating velocity if ball isn't moving
-        if (balls_V[id] != Vector3.zero || balls_W[id] != Vector3.zero)
+        if (table.game.table.balls.ballsV[id] != Vector3.zero || table.game.table.balls.ballsW[id] != Vector3.zero)
         {
             isBallMoving = updateVelocity(id, g_ball_current);
         }
@@ -424,7 +413,7 @@ public class StandardPhysicsManager : UdonSharpBehaviour
             if ((ball_bit & sn_pocketed) != 0U)
                 continue;
 
-            Vector3 delta = balls_P[i] - balls_P[id];
+            Vector3 delta = table.game.table.balls.ballsP[i] - table.game.table.balls.ballsP[id];
             float dist = delta.sqrMagnitude;
 
             if (dist < k_BALL_DIAMETREPESQ)
@@ -434,23 +423,23 @@ public class StandardPhysicsManager : UdonSharpBehaviour
 
                 // static resolution
                 Vector3 res = (k_BALL_DIAMETRE - dist) * normal;
-                balls_P[i] += res;
-                balls_P[id] -= res;
+                table.game.table.balls.ballsP[i] += res;
+                table.game.table.balls.ballsP[id] -= res;
                 moved[i] = true;
                 moved[id] = true;
 
-                Vector3 velocityDelta = balls_V[id] - balls_V[i];
+                Vector3 velocityDelta = table.game.table.balls.ballsV[id] - table.game.table.balls.ballsV[i];
 
                 float dot = Vector3.Dot(velocityDelta, normal);
 
                 // Dynamic resolution (Cr is assumed to be (1)+1.0)
 
                 Vector3 reflection = normal * dot;
-                balls_V[id] -= reflection;
-                balls_V[i] += reflection;
+                table.game.table.balls.ballsV[id] -= reflection;
+                table.game.table.balls.ballsV[i] += reflection;
 
                 // Prevent sound spam if it happens
-                if (balls_V[id].sqrMagnitude > 0 && balls_V[i].sqrMagnitude > 0)
+                if (table.game.table.balls.ballsV[id].sqrMagnitude > 0 && table.game.table.balls.ballsV[i].sqrMagnitude > 0)
                 {
                     g_ball_current.GetComponent<AudioSource>().PlayOneShot(hitSounds[id % 3], Mathf.Clamp01(reflection.magnitude));
                 }
@@ -467,9 +456,9 @@ public class StandardPhysicsManager : UdonSharpBehaviour
         bool ballMoving = false;
 
         // Since v1.5.0
-        Vector3 V = balls_V[id];
+        Vector3 V = table.game.table.balls.ballsV[id];
         Vector3 VwithoutY = new Vector3(V.x, 0, V.z);
-        Vector3 W = balls_W[id];
+        Vector3 W = table.game.table.balls.ballsW[id];
         Vector3 cv;
 
         // Equations derived from: http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.89.4627&rep=rep1&type=pdf
@@ -498,7 +487,7 @@ public class StandardPhysicsManager : UdonSharpBehaviour
         //   Δω = ((-5∙µₛ∙g)/(2/R))∙Δt∙i✕(c/|c|)
         //   Δv = -µₛ∙g∙Δt(c/|c|)
 
-        if (balls_P[id].y < 0.001)
+        if (table.game.table.balls.ballsP[id].y < 0.001)
         {
             // Relative contact velocity of ball and table
             cv = VwithoutY + Vector3.Cross(k_CONTACT_POINT, W);
@@ -558,13 +547,13 @@ public class StandardPhysicsManager : UdonSharpBehaviour
             ballMoving = true;
         }
 
-        if (balls_P[id].y > 0) // small epsilon to apply gravity
+        if (table.game.table.balls.ballsP[id].y > 0) // small epsilon to apply gravity
             V.y -= k_GRAVITY * k_FIXED_TIME_STEP;
         else
             V.y = 0;
 
-        balls_W[id] = W;
-        balls_V[id] = V;
+        table.game.table.balls.ballsW[id] = W;
+        table.game.table.balls.ballsV[id] = V;
 
         ball.transform.Rotate(this.transform.TransformDirection(W.normalized), W.magnitude * k_FIXED_TIME_STEP * -Mathf.Rad2Deg, Space.World);
 
@@ -594,33 +583,33 @@ public class StandardPhysicsManager : UdonSharpBehaviour
 
     private bool isCueBallTouching()
     {
-        if (table.is8Ball) // 8 ball
+        if (table.game.table.is8Ball) // 8 ball
         {
             // Check all
             for (int i = 1; i < 16; i++)
             {
-                if ((balls_P[0] - balls_P[i]).sqrMagnitude < k_BALL_DSQR)
+                if ((table.game.table.balls.ballsP[0] - table.game.table.balls.ballsP[i]).sqrMagnitude < k_BALL_DSQR)
                 {
                     return true;
                 }
             }
         }
-        else if (table.is9Ball) // 9
+        else if (table.game.table.is9Ball) // 9
         {
             // Only check to 9 ball
             for (int i = 1; i <= 9; i++)
             {
-                if ((balls_P[0] - balls_P[i]).sqrMagnitude < k_BALL_DSQR)
+                if ((table.game.table.balls.ballsP[0] - table.game.table.balls.ballsP[i]).sqrMagnitude < k_BALL_DSQR)
                 {
                     return true;
                 }
             }
         }
-        else if (table.isSnooker6Red)
+        else if (table.game.table.isSnooker6Red)
         {
             for (int i = 1; i <= 12; i++)
             {
-                if ((balls_P[0] - balls_P[i]).sqrMagnitude < k_BALL_DSQR)
+                if ((table.game.table.balls.ballsP[0] - table.game.table.balls.ballsP[i]).sqrMagnitude < k_BALL_DSQR)
                 {
                     return true;
                 }
@@ -628,15 +617,15 @@ public class StandardPhysicsManager : UdonSharpBehaviour
         }
         else // 4
         {
-            if ((balls_P[0] - balls_P[9]).sqrMagnitude < k_BALL_DSQR)
+            if ((table.game.table.balls.ballsP[0] - table.game.table.balls.ballsP[9]).sqrMagnitude < k_BALL_DSQR)
             {
                 return true;
             }
-            if ((balls_P[0] - balls_P[2]).sqrMagnitude < k_BALL_DSQR)
+            if ((table.game.table.balls.ballsP[0] - table.game.table.balls.ballsP[2]).sqrMagnitude < k_BALL_DSQR)
             {
                 return true;
             }
-            if ((balls_P[0] - balls_P[3]).sqrMagnitude < k_BALL_DSQR)
+            if ((table.game.table.balls.ballsP[0] - table.game.table.balls.ballsP[3]).sqrMagnitude < k_BALL_DSQR)
             {
                 return true;
             }
@@ -688,7 +677,7 @@ public class StandardPhysicsManager : UdonSharpBehaviour
         // Reject bounce if velocity is going the same way as normal
         // this state means we tunneled, but it happens only on the corner
         // vertexes
-        Vector3 source_v = balls_V[id];
+        Vector3 source_v = table.game.table.balls.ballsV[id];
         if (Vector3.Dot(source_v, N) > 0.0f)
         {
             return;
@@ -698,7 +687,7 @@ public class StandardPhysicsManager : UdonSharpBehaviour
         Quaternion rq = Quaternion.AngleAxis(Mathf.Atan2(-N.z, -N.x) * Mathf.Rad2Deg, Vector3.up);
         Quaternion rb = Quaternion.Inverse(rq);
         Vector3 V = rq * source_v;
-        Vector3 W = rq * balls_W[id];
+        Vector3 W = rq * table.game.table.balls.ballsW[id];
 
         Vector3 V1;
         Vector3 W1;
@@ -733,8 +722,8 @@ public class StandardPhysicsManager : UdonSharpBehaviour
         W1.y = k * k_COSA;
 
         // Unrotate result
-        balls_V[id] += rb * V1;
-        balls_W[id] += rb * W1;
+        table.game.table.balls.ballsV[id] += rb * V1;
+        table.game.table.balls.ballsW[id] += rb * W1;
     }
 
 
@@ -872,39 +861,39 @@ public class StandardPhysicsManager : UdonSharpBehaviour
     }
 
     // Check pocket condition
-    void _phy_ball_pockets(int id, Vector3[] balls_P)
+    void _phy_ball_pockets(int id)
     {
-        Vector3 A = balls_P[id];
+        Vector3 A = table.game.table.balls.ballsP[id];
         Vector3 absA = new Vector3(Mathf.Abs(A.x), A.y, Mathf.Abs(A.z));
 
         if ((absA - k_vE).sqrMagnitude < k_INNER_RADIUS_SQ)
         {
-            balls_V[id] = Vector3.zero;
-            balls_W[id] = Vector3.zero;
+            table.game.table.balls.ballsV[id] = Vector3.zero;
+            table.game.table.balls.ballsW[id] = Vector3.zero;
             table._TriggerPocketBall(id);
             return;
         }
 
         if ((absA - k_vF).sqrMagnitude < k_INNER_RADIUS_SQ)
         {
-            balls_V[id] = Vector3.zero;
-            balls_W[id] = Vector3.zero;
+            table.game.table.balls.ballsV[id] = Vector3.zero;
+            table.game.table.balls.ballsW[id] = Vector3.zero;
             table._TriggerPocketBall(id);
             return;
         }
 
         if (absA.z > k_vF.z)
         {
-            balls_V[id] = Vector3.zero;
-            balls_W[id] = Vector3.zero;
+            table.game.table.balls.ballsV[id] = Vector3.zero;
+            table.game.table.balls.ballsW[id] = Vector3.zero;
             table._TriggerPocketBall(id);
             return;
         }
 
         if (absA.z > -absA.x + k_vE.x + k_vE.z)
         {
-            balls_V[id] = Vector3.zero;
-            balls_W[id] = Vector3.zero;
+            table.game.table.balls.ballsV[id] = Vector3.zero;
+            table.game.table.balls.ballsW[id] = Vector3.zero;
             table._TriggerPocketBall(id);
             return;
         }
@@ -914,7 +903,7 @@ public class StandardPhysicsManager : UdonSharpBehaviour
     void _phy_ball_table_carom(int id)
     {
         float zz, zx;
-        Vector3 A = balls_P[id];
+        Vector3 A = table.game.table.balls.ballsP[id];
 
         // Setup major regions
         zx = Mathf.Sign(A.x);
@@ -922,13 +911,13 @@ public class StandardPhysicsManager : UdonSharpBehaviour
 
         if (A.x * zx > k_pR.x)
         {
-            balls_P[id].x = k_pR.x * zx;
+            table.game.table.balls.ballsP[id].x = k_pR.x * zx;
             _phy_bounce_cushion(id, Vector3.left * zx);
         }
 
         if (A.z * zz > k_pO.z)
         {
-            balls_P[id].z = k_pO.z * zz;
+            table.game.table.balls.ballsP[id].z = k_pO.z * zz;
             _phy_bounce_cushion(id, Vector3.back * zz);
         }
     }
@@ -938,7 +927,7 @@ public class StandardPhysicsManager : UdonSharpBehaviour
         Vector3 A, N, _V, V, a_to_v;
         float dot;
 
-        A = balls_P[id];
+        A = table.game.table.balls.ballsP[id];
 
         _sign_pos.x = Mathf.Sign(A.x);
         _sign_pos.z = Mathf.Sign(A.z);
@@ -1048,7 +1037,7 @@ public class StandardPhysicsManager : UdonSharpBehaviour
                     {
                         // Velocity based A->C delegation ( scuffed CCD )
                         a_to_v = A - k_vA;
-                        _V = Vector3.Scale(balls_V[id], _sign_pos);
+                        _V = Vector3.Scale(table.game.table.balls.ballsV[id], _sign_pos);
                         V.x = -_V.z;
                         V.y = 0.0f;
                         V.z = _V.x;
@@ -1212,7 +1201,7 @@ public class StandardPhysicsManager : UdonSharpBehaviour
             }
         }
 
-        balls_P[id] = Vector3.Scale(A, _sign_pos);
+        table.game.table.balls.ballsP[id] = Vector3.Scale(A, _sign_pos);
     }
 
     public Vector3 RaySphere_output;
@@ -1254,7 +1243,7 @@ public class StandardPhysicsManager : UdonSharpBehaviour
         GameObject cuetip = table.activeCue._GetCuetip();
 
         Vector3 q = transform_Surface.InverseTransformDirection(cuetip.transform.forward); // direction of cue in surface space
-        Vector3 o = balls[0].transform.localPosition; // location of ball in surface
+        Vector3 o = table.game.table.balls.balls[0].transform.localPosition; // location of ball in surface
 
         Vector3 j = -Vector3.ProjectOnPlane(q, transform_Surface.up); // project cue direction onto table surface, gives us j
         Vector3 k = transform_Surface.up;
@@ -1334,7 +1323,7 @@ public class StandardPhysicsManager : UdonSharpBehaviour
         v = Quaternion.AngleAxis(alpha, transform_Surface.up) * v;
 
         // done
-        balls_V[0] = v;
-        balls_W[0] = w;
+        table.game.table.balls.ballsV[0] = v;
+        table.game.table.balls.ballsW[0] = w;
     }
 }

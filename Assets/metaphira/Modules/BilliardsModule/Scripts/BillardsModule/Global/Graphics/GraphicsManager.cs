@@ -66,8 +66,6 @@ public class GraphicsManager : UdonSharpBehaviour
     private bool usColors;
     private bool usingTableTimer;
     private bool shadowsDisabled;
-
-    private GameObject[] balls;
     private Transform[] ballTransforms;
     private Vector3[] ballPositions;
 
@@ -78,36 +76,35 @@ public class GraphicsManager : UdonSharpBehaviour
         _InitializeTable();
 
         // copy some temporaries
-        balls = table.balls;
-        ballPositions = table.ballsP;
+        ballPositions = table.game.table.balls.ballsP;
 
-        ballTransforms = new Transform[balls.Length];
-        for (int i = 0; i < balls.Length; i++)
+        ballTransforms = new Transform[table.game.table.balls.balls.Length];
+        for (int i = 0; i < table.game.table.balls.balls.Length; i++)
         {
-            ballTransforms[i] = balls[i].transform;
+            ballTransforms[i] = table.game.table.balls.balls[i].transform;
         }
 
 
-        Material[] materials = balls[0].GetComponent<MeshRenderer>().materials; // create a new instance for this table
+        Material[] materials = table.game.table.balls.balls[0].GetComponent<MeshRenderer>().materials; // create a new instance for this table
         ballMaterial = materials[0];
         shadowMaterial = materials[1];
         ballMaterial.name = ballMaterial.name + " for " + table_.gameObject.name;
         shadowMaterial.name = shadowMaterial.name + " for " + table_.gameObject.name;
 
         Material[] newMaterials = new Material[] { ballMaterial, shadowMaterial };
-        for (int i = 0; i < balls.Length; i++)
+        for (int i = 0; i < table.game.table.balls.balls.Length; i++)
         {
-            balls[i].GetComponent<MeshRenderer>().materials = newMaterials;
+            table.game.table.balls.balls[i].GetComponent<MeshRenderer>().materials = newMaterials;
         }
 
         for (int i = 0; i < 4; i++)
         {
-            meshOverrideFourBall[i] = balls[12 + i].GetComponent<MeshFilter>().sharedMesh;
+            meshOverrideFourBall[i] = table.game.table.balls.balls[12 + i].GetComponent<MeshFilter>().sharedMesh;
         }
-        meshOverrideRegular[0] = balls[0].GetComponent<MeshFilter>().sharedMesh;
+        meshOverrideRegular[0] = table.game.table.balls.balls[0].GetComponent<MeshFilter>().sharedMesh;
         for (int i = 0; i < 3; i++)
         {
-            meshOverrideRegular[i + 1] = balls[13 + i].GetComponent<MeshFilter>().sharedMesh;
+            meshOverrideRegular[i + 1] = table.game.table.balls.balls[13 + i].GetComponent<MeshFilter>().sharedMesh;
         }
 
         _DisableObjects();
@@ -135,10 +132,10 @@ public class GraphicsManager : UdonSharpBehaviour
 
     private void tickBallPositions()
     {
-        if (!table.gameLive) return;
+        if (!table.game.gameLive) return;
 
         uint ball_bit = 0x1u;
-        uint pocketed = table.ballsPocketedLocal;
+        uint pocketed = table.game.table.balls.ballsPocketedLocal;
         for (int i = 0; i < 16; i++)
         {
             if ((ball_bit & pocketed) == 0x0u)
@@ -204,11 +201,11 @@ public class GraphicsManager : UdonSharpBehaviour
             introAnimationTime = 0.0f;
 
         // Cueball drops late
-        tickIntroBall(table.balls[0].transform, 0.33f);
+        tickIntroBall(table.game.table.balls.balls[0].transform, 0.33f);
 
         for (int i = 1; i < 16; i++)
         {
-            tickIntroBall(table.balls[i].transform, 0.84f + i * 0.03f);
+            tickIntroBall(table.game.table.balls.balls[i].transform, 0.84f + i * 0.03f);
         }
     }
 
@@ -233,7 +230,7 @@ public class GraphicsManager : UdonSharpBehaviour
 
     private void tickLobbyStatus()
     {
-        if (table.gameLive || !table.lobbyOpen) return;
+        if (table.game.gameLive || !table.game.lobbyOpen) return;
 
         string settings = "";
         switch (table.gameModeLocal)
@@ -266,7 +263,7 @@ public class GraphicsManager : UdonSharpBehaviour
 
     private void tickWinner()
     {
-        if (table.gameLive || table.lobbyOpen) return;
+        if (table.game.gameLive || table.game.lobbyOpen) return;
 
 #if !HT_QUEST
         _FlashTableColor(tableSrcColour * (Mathf.Sin(Time.timeSinceLevelLoad * 3.0f) * 0.5f + 1.0f));
@@ -280,7 +277,7 @@ public class GraphicsManager : UdonSharpBehaviour
     {
         scorecardHolder.SetActive(true);
 
-        if (players[2] == "" || !table.teamsLocal)
+        if (players[2] == "" || !table.game.table.teamsLocal)
         {
             playerNames[0].fontSize = 13;
             playerNames[0].text = _FormatName(players[0]);
@@ -291,7 +288,7 @@ public class GraphicsManager : UdonSharpBehaviour
             playerNames[0].text = _FormatName(players[0]) + "\n" + _FormatName(players[2]);
         }
 
-        if (players[3] == "" || !table.teamsLocal)
+        if (players[3] == "" || !table.game.table.teamsLocal)
         {
             playerNames[1].fontSize = 13;
             playerNames[1].text = _FormatName(players[1]);
@@ -321,7 +318,7 @@ public class GraphicsManager : UdonSharpBehaviour
 
         winnerTextHolder.SetActive(true);
         winnerTextHolder.transform.localRotation = Quaternion.identity;
-        if (player2 == "" || !table.teamsLocal)
+        if (player2 == "" || !table.game.table.teamsLocal)
         {
             winnerText.text = _FormatName(player1) + " wins!";
         }
@@ -407,7 +404,7 @@ int uniform_cue_colour;
 
     private void updateFourBallCues()
     {
-        if (table.isPracticeMode)
+        if (table.game.table.isPracticeMode)
         {
             cueBodyRenderers[0].material.SetColor(uniform_cue_colour, (table.teamIdLocal == 0 ? pColour0 : pColour1));
         }
@@ -420,7 +417,7 @@ int uniform_cue_colour;
 
     private void updateNineBallCues()
     {
-        if (table.isPracticeMode)
+        if (table.game.table.isPracticeMode)
         {
             cueBodyRenderers[0].material.SetColor(uniform_cue_colour, table.game.table.k_colour_default);
         }
@@ -433,9 +430,9 @@ int uniform_cue_colour;
 
     private void updateEightBallCues(uint teamId)
     {
-        if (table.isPracticeMode)
+        if (table.game.table.isPracticeMode)
         {
-            if (!table.isTableOpenLocal)
+            if (!table.game.table.isTableOpenLocal)
             {
                 cueBodyRenderers[0].material.SetColor(uniform_cue_colour, (teamId ^ table.teamColorLocal) == 0 ? pColour0 : pColour1);
             }
@@ -446,7 +443,7 @@ int uniform_cue_colour;
         }
         else
         {
-            if (!table.isTableOpenLocal)
+            if (!table.game.table.isTableOpenLocal)
             {
                 cueBodyRenderers[table.teamColorLocal].material.SetColor(uniform_cue_colour, pColour0);
                 cueBodyRenderers[table.teamColorLocal ^ 0x1u].material.SetColor(uniform_cue_colour, pColour1);
@@ -460,7 +457,7 @@ int uniform_cue_colour;
     }
     private void updateSnookerCues()
     {
-        if (table.isPracticeMode)
+        if (table.game.table.isPracticeMode)
         {
             cueBodyRenderers[0].material.SetColor(uniform_cue_colour, (table.teamIdLocal == 0 ? pColour0 : pColour1));
         }
@@ -472,12 +469,12 @@ int uniform_cue_colour;
     }
     private void updateCues(uint idsrc)
     {
-        if (table.is4Ball) updateFourBallCues();
-        else if (table.is9Ball) updateNineBallCues();
-        else if (table.is8Ball) updateEightBallCues(idsrc);
-        else if (table.isSnooker6Red) updateSnookerCues();
+        if (table.game.table.is4Ball) updateFourBallCues();
+        else if (table.game.table.is9Ball) updateNineBallCues();
+        else if (table.game.table.is8Ball) updateEightBallCues(idsrc);
+        else if (table.game.table.isSnooker6Red) updateSnookerCues();
 
-        if (table.isPracticeMode)
+        if (table.game.table.isPracticeMode)
         {
             cuePrimaryGripRenderers[0].material.SetColor(uniform_marker_colour, gripColorActive);
             cueSecondaryGripRenderers[0].material.SetColor(uniform_marker_colour, gripColorActive);
@@ -503,7 +500,7 @@ int uniform_cue_colour;
 
     private void updateTable(uint teamId)
     {
-        if (table.is4Ball)
+        if (table.game.table.is4Ball)
         {
             if ((teamId ^ table.teamColorLocal) == 0)
             {
@@ -516,13 +513,13 @@ int uniform_cue_colour;
                 tableSrcColour = pColour1;
             }
         }
-        else if (table.is9Ball)
+        else if (table.game.table.is9Ball)
         {
             tableSrcColour = pColour2;
         }
         else
         {
-            if (!table.isTableOpenLocal)
+            if (!table.game.table.isTableOpenLocal)
             {
                 if ((teamId ^ table.teamColorLocal) == 0)
                 {
@@ -579,36 +576,36 @@ int uniform_cue_colour;
 
     public void _ShowBalls()
     {
-        if (table.is9Ball)
+        if (table.game.table.is9Ball)
         {
             for (int i = 0; i <= 9; i++)
-                table.balls[i].SetActive(true);
+                table.game.table.balls.balls[i].SetActive(true);
 
             for (int i = 10; i < 16; i++)
-                table.balls[i].SetActive(false);
+                table.game.table.balls.balls[i].SetActive(false);
         }
-        else if (table.is4Ball)
+        else if (table.game.table.is4Ball)
         {
             for (int i = 1; i < 16; i++)
-                table.balls[i].SetActive(false);
+                table.game.table.balls.balls[i].SetActive(false);
 
-            table.balls[0].SetActive(true);
-            table.balls[13].SetActive(true);
-            table.balls[14].SetActive(true);
-            table.balls[15].SetActive(true);
+            table.game.table.balls.balls[0].SetActive(true);
+            table.game.table.balls.balls[13].SetActive(true);
+            table.game.table.balls.balls[14].SetActive(true);
+            table.game.table.balls.balls[15].SetActive(true);
         }
-        else if (table.isSnooker6Red)
+        else if (table.game.table.isSnooker6Red)
         {
             for (int i = 0; i < 13; i++)
-                table.balls[i].SetActive(true);
+                table.game.table.balls.balls[i].SetActive(true);
             for (int i = 13; i < 16; i++)
-                table.balls[i].SetActive(false);
+                table.game.table.balls.balls[i].SetActive(false);
         }
         else
         {
             for (int i = 0; i < 16; i++)
             {
-                table.balls[i].SetActive(true);
+                table.game.table.balls.balls[i].SetActive(true);
             }
         }
     }
@@ -639,30 +636,32 @@ int uniform_cue_colour;
         sixRedTextTeam1.text = "0";
         sixRedTextTeam2.text = "0";
         sixRedTextCurrent.text = "Sink Red Ball.";
-        sixRedTextTeam1.gameObject.SetActive(table.isSnooker6Red ? true : false);
-        sixRedTextTeam2.gameObject.SetActive(table.isSnooker6Red ? true : false);
-        sixRedTextCurrent.gameObject.SetActive(table.isSnooker6Red ? true : false);
-        snookerLines.gameObject.SetActive(table.isSnooker6Red ? true : false);
+        sixRedTextTeam1.gameObject.SetActive(table.game.table.isSnooker6Red ? true : false);
+        sixRedTextTeam2.gameObject.SetActive(table.game.table.isSnooker6Red ? true : false);
+        sixRedTextCurrent.gameObject.SetActive(table.game.table.isSnooker6Red ? true : false);
+        snookerLines.gameObject.SetActive(table.game.table.isSnooker6Red ? true : false);
 
-        if (table.is4Ball)
+        if (table.game.table.is4Ball)
         {
-            balls[0].GetComponent<MeshFilter>().sharedMesh = meshOverrideFourBall[0];
-            balls[13].GetComponent<MeshFilter>().sharedMesh = meshOverrideFourBall[1];
-            balls[14].GetComponent<MeshFilter>().sharedMesh = meshOverrideFourBall[2];
-            balls[15].GetComponent<MeshFilter>().sharedMesh = meshOverrideFourBall[3];
+            table.game.table.balls.balls[0].GetComponent<MeshFilter>().sharedMesh = meshOverrideFourBall[0];
+            table.game.table.balls.balls[13].GetComponent<MeshFilter>().sharedMesh = meshOverrideFourBall[1];
+            table.game.table.balls.balls[14].GetComponent<MeshFilter>().sharedMesh = meshOverrideFourBall[2];
+            table.game.table.balls.balls[15].GetComponent<MeshFilter>().sharedMesh = meshOverrideFourBall[3];
         }
         else
         {
-            balls[0].GetComponent<MeshFilter>().sharedMesh = meshOverrideRegular[0];
-            balls[13].GetComponent<MeshFilter>().sharedMesh = meshOverrideRegular[1];
-            balls[14].GetComponent<MeshFilter>().sharedMesh = meshOverrideRegular[2];
-            balls[15].GetComponent<MeshFilter>().sharedMesh = meshOverrideRegular[3];
+            table.game.table.balls.balls[0].GetComponent<MeshFilter>().sharedMesh = meshOverrideRegular[0];
+            table.game.table.balls.balls[13].GetComponent<MeshFilter>().sharedMesh = meshOverrideRegular[1];
+            table.game.table.balls.balls[14].GetComponent<MeshFilter>().sharedMesh = meshOverrideRegular[2];
+            table.game.table.balls.balls[15].GetComponent<MeshFilter>().sharedMesh = meshOverrideRegular[3];
         }
     }
 
+    // Logic feels like it shouldb be triggered somwhere else.
+    // Maybe rules?
     public void _UpdateTableColorScheme()
     {
-        if (table.is9Ball)  // 9 Ball / USA colours
+        if (table.game.table.is9Ball)  // 9 Ball / USA colours
         {
             pColour0 = table.game.table.k_colour_default;
             pColour1 = table.game.table.k_colour_default;
@@ -672,9 +671,9 @@ int uniform_cue_colour;
             pClothColour = table.game.table.k_fabricColour_9ball;
 
             // 9 ball only uses one colourset / cloth colour
-            ballMaterial.SetTexture("_MainTex", table.textureSets[1]);
+            ballMaterial.SetTexture("_MainTex", table.game.table.balls.getTexture(BallTextureE.NINE_BALL));
         }
-        else if (table.is4Ball)
+        else if (table.game.table.is4Ball)
         {
             pColour0 = table.game.table.k_colour4Ball_team_0;
             pColour1 = table.game.table.k_colour4Ball_team_1;
@@ -683,10 +682,10 @@ int uniform_cue_colour;
             pColour2 = table.game.table.k_colour_foul;
             pColourErr = table.game.table.k_colour_foul;
 
-            ballMaterial.SetTexture("_MainTex", table.textureSets[1]);
+            ballMaterial.SetTexture("_MainTex", table.game.table.balls.getTexture(BallTextureE.NINE_BALL));
             pClothColour = table.game.table.k_fabricColour_4ball;
         }
-        else if (table.isSnooker6Red)
+        else if (table.game.table.isSnooker6Red)
         {
             pColourErr = table.game.table.k_colour_default;
             pColour2 = table.game.table.k_colour_default;
@@ -694,7 +693,7 @@ int uniform_cue_colour;
             pColour0 = table.game.table.k_teamColour_spots;
             pColour1 = table.game.table.k_teamColour_stripes;
 
-            ballMaterial.SetTexture("_MainTex", table.snookerTexture);
+            ballMaterial.SetTexture("_MainTex", table.game.table.balls.getTexture(BallTextureE.SNOOKER));
             pClothColour = table.game.table.k_fabricColour_8ball;
         }
         else // Standard 8 ball derivatives
@@ -705,7 +704,7 @@ int uniform_cue_colour;
             pColour0 = table.game.table.k_teamColour_spots;
             pColour1 = table.game.table.k_teamColour_stripes;
 
-            ballMaterial.SetTexture("_MainTex", usColors ? usColorTexture : table.textureSets[0]);
+            ballMaterial.SetTexture("_MainTex", usColors ? usColorTexture : table.game.table.balls.getTexture(BallTextureE.EIGHT_BALL));
             pClothColour = table.game.table.k_fabricColour_8ball;
         }
 
@@ -714,13 +713,13 @@ int uniform_cue_colour;
 
     public void _DisableObjects()
     {
-        table.guideline.SetActive(false);
-        table.devhit.SetActive(false);
+        table.game.table.cues.guideline.SetActive(false);
+        table.game.table.cues.devhit.SetActive(false);
         winnerTextHolder.SetActive(false);
         lobbyStatusTextHolder.SetActive(false);
-        table.markerObj.SetActive(false);
+        table.game.table.balls.markerObj.SetActive(false);
         scorecardHolder.SetActive(false);
-        table.marker9ball.SetActive(false);
+        table.game.table.balls.marker9ball.SetActive(false);
         fourBallPoint.SetActive(false);
         table.transform.Find("intl.controls/undo").gameObject.SetActive(false);
         table.transform.Find("intl.controls/redo").gameObject.SetActive(false);
@@ -738,15 +737,15 @@ int uniform_cue_colour;
 
         for (int i = 0; i < 16; i++)
         {
-            table.balls[i].GetComponent<Rigidbody>().isKinematic = true;
+            table.game.table.balls.balls[i].GetComponent<Rigidbody>().isKinematic = true;
 
-            if ((ball_bit & table.ballsPocketedLocal) == ball_bit)
+            if ((ball_bit & table.game.table.balls.ballsPocketedLocal) == ball_bit)
             {
                 // Recover Y position since its lost in networking
-                Vector3 rack_position = table.ballsP[i];
+                Vector3 rack_position = table.game.table.balls.ballsP[i];
                 rack_position.y = table.k_rack_position.y;
 
-                table.balls[i].transform.localPosition = rack_position;
+                table.game.table.balls.balls[i].transform.localPosition = rack_position;
             }
 
             ball_bit <<= 1;
@@ -755,21 +754,21 @@ int uniform_cue_colour;
 
     public void _UpdateScorecard()
     {
-        if (table.isSnooker6Red)
+        if (table.game.table.isSnooker6Red)
         {
             int nextColor = table.sixRedFindLowestUnpocketedColor(table.managers.networkingManager.ballsPocketedSynced);
-            sixRedTextTeam2.text = table.fbScoresLocal[0].ToString();
-            sixRedTextTeam1.text = table.fbScoresLocal[1].ToString();
+            sixRedTextTeam2.text = table.game.table.rule4Ball.scoresLocal[0].ToString();
+            sixRedTextTeam1.text = table.game.table.rule4Ball.scoresLocal[1].ToString();
             sixRedTextTeam2.color = table.game.table.k_teamColour_spots;
             sixRedTextTeam1.color = table.game.table.k_teamColour_stripes;
             sixRedTextCurrent.text = table.managers.networkingManager.colorTurnSynced ?
                 "Sink Colored Ball." : (table.managers.networkingManager.redsOnTableSynced ?
                 "Sink Red Ball." : $"Sink {table.sixRedNumberToColor(nextColor)} Ball.");
         }
-        else if (table.is4Ball)
+        else if (table.game.table.is4Ball)
         {
-            scorecard.SetInt("_LeftScore", table.fbScoresLocal[0]);
-            scorecard.SetInt("_RightScore", table.fbScoresLocal[1]);
+            scorecard.SetInt("_LeftScore", table.game.table.rule4Ball.scoresLocal[0]);
+            scorecard.SetInt("_RightScore", table.game.table.rule4Ball.scoresLocal[1]);
 
             scorecardColors[0] = table.game.table.k_colour4Ball_team_0;
             scorecardColors[1] = table.game.table.k_colour4Ball_team_1;
@@ -779,7 +778,7 @@ int uniform_cue_colour;
         {
             int[] counter0 = new int[2];
 
-            uint temp = table.ballsPocketedLocal;
+            uint temp = table.game.table.balls.ballsPocketedLocal;
 
             for (int j = 0; j < 2; j++)
             {
@@ -809,7 +808,7 @@ int uniform_cue_colour;
             }
 
             // Add black ball if we are winning the thing
-            if (!table.gameLive)
+            if (!table.game.gameLive)
             {
                 counter0[table.winningTeamLocal] += (int)((table.ballsPocketedLocal & 0x2) >> 1);
                 if (!usColors)
@@ -825,7 +824,7 @@ int uniform_cue_colour;
             scorecard.SetInt("_RightScore", counter0[1]);
             scorecard.SetColorArray("_Colors", scorecardColors);
 
-            if (table.isTableOpenLocal || !usColors)
+            if (table.game.table.isTableOpenLocal || !usColors)
             {
                 scorecard.SetInt("_SolidsMode", 0);
             }
@@ -838,17 +837,17 @@ int uniform_cue_colour;
 
     public void _UpdateFourBallCueBallTextures(uint fourBallCueBall)
     {
-        if (!table.is4Ball) return;
+        if (!table.game.table.is4Ball) return;
 
         if (fourBallCueBall == 0)
         {
-            table.balls[0].GetComponent<MeshFilter>().sharedMesh = meshOverrideFourBall[0];
-            table.balls[13].GetComponent<MeshFilter>().sharedMesh = meshOverrideFourBall[1];
+            table.game.table.balls.balls[0].GetComponent<MeshFilter>().sharedMesh = meshOverrideFourBall[0];
+            table.game.table.balls.balls[13].GetComponent<MeshFilter>().sharedMesh = meshOverrideFourBall[1];
         }
         else
         {
-            table.balls[13].GetComponent<MeshFilter>().sharedMesh = meshOverrideFourBall[0];
-            table.balls[0].GetComponent<MeshFilter>().sharedMesh = meshOverrideFourBall[1];
+            table.game.table.balls.balls[13].GetComponent<MeshFilter>().sharedMesh = meshOverrideFourBall[0];
+            table.game.table.balls.balls[0].GetComponent<MeshFilter>().sharedMesh = meshOverrideFourBall[1];
         }
     }
 
@@ -867,7 +866,7 @@ int uniform_cue_colour;
             {
                 _HideTimers();
             }
-            else if (table.timerRunning)
+            else if (table.game.table.timerRunning)
             {
                 _ShowTimers();
             }
@@ -879,17 +878,18 @@ int uniform_cue_colour;
         return usColors;
     }
 
+    // TODO: Whats is this?
     public void _SetUSColors(bool usColors_)
     {
         usColors = usColors_;
 
         if (table != null)
         {
-            if (table.is8Ball)
+            if (table.game.table.is8Ball)
             {
                 for (int i = 0; i < 16; i++)
                 {
-                    ballMaterial.SetTexture("_MainTex", usColors ? usColorTexture : table.textureSets[0]);
+                    ballMaterial.SetTexture("_MainTex", usColors ? usColorTexture : table.game.table.balls.getTexture(BallTextureE.EIGHT_BALL));
                 }
                 _UpdateScorecard();
             }
@@ -922,7 +922,7 @@ int uniform_cue_colour;
             }
             for (int i = 0; i < 16; i++)
             {
-                balls[i].GetComponent<MeshRenderer>().materials = newMaterials;
+                table.game.table.balls.balls[i].GetComponent<MeshRenderer>().materials = newMaterials;
             }
         }
     }

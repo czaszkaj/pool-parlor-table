@@ -44,7 +44,7 @@ public class PracticeManager : UdonSharpBehaviour
             return;
         }*/
 
-        if (!table.isPracticeMode) return; // doesn't matter
+        if (!table.game.table.isPracticeMode) return; // doesn't matter
 
         int stateIdLocal = table.managers.networkingManager.stateIdSynced;
         
@@ -152,7 +152,7 @@ public class PracticeManager : UdonSharpBehaviour
 
     private void load(int newPtr)
     {
-        if (table.isLocalSimulationRunning)
+        if (table.game.isLocalSimulationRunning)
         {
             table.logger._LogInfo("interrupting simulation and loading new state");
         }

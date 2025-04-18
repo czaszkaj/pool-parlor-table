@@ -1,6 +1,7 @@
 ﻿
 using UdonSharp;
 using UnityEngine;
+using UnityEngine.UI;
 using VRC.SDKBase;
 using VRC.Udon;
 using System;
@@ -8,9 +9,42 @@ using System;
 [UdonBehaviourSyncMode(BehaviourSyncMode.None)]
 public class TableManager : UdonSharpBehaviour
 {
+    // Non Serialized
     [NonSerialized] [HideInInspector] public GraphicsManager graphics;
+    [NonSerialized] [HideInInspector] public CueRackManager cues;
+    [NonSerialized] [HideInInspector] public BallManager balls;
+    // Rules, to be replaced with active_rule
+    [NonSerialized] [HideInInspector] public Rule8Ball rule8Ball;
+    [NonSerialized] [HideInInspector] public Rule9Ball rule9Ball;
+    [NonSerialized] [HideInInspector] public Rule6Reds rule6Reds;
+    [NonSerialized] [HideInInspector] public Rule4Ball rule4Ball;
+    [NonSerialized] [HideInInspector] public PracticeManager practice;
+    [NonSerialized] [HideInInspector] public CommonRules common;
+    // TODO refactor, better allocation
+    // For now it make sense to be here, will update together with functions
+    // For example redo ifXBall to enum
+    [NonSerialized] public bool teamsLocal,
+                                isTableOpenLocal,
+                                canPlayLocal,
+                                colorTurnLocal,
+                                canHitCueBall = false,
+                                isReposition = false,
+                                is8Ball = false,
+                                is9Ball = false,
+                                is4Ball = false,
+                                isJp4Ball = false,
+                                isKr4Ball = false,
+                                isSnooker6Red = false,
+                                isPracticeMode = false,
+                                timerRunning = false;
 
-    // TODO: Move to rules
+    // Serialized
+    [SerializeField] public ModelData[] tableModels;
+    [SerializeField] public Texture2D[] tableSkins;
+    [SerializeField] public UdonSharpBehaviour cameraModule;
+    [SerializeField] public Text infReset; // Text under reset button
+
+    // TODO: Move/Rename???
     [SerializeField] [HideInInspector] public Color k_colour_foul,        // v1.6: ( 1.2, 0.0, 0.0, 1.0 )
                                                     k_colour_default,     // v1.6: ( 1.0, 1.0, 1.0, 1.0 )
                                                     k_colour_off = new Color(0.01f, 0.01f, 0.01f, 1.0f);
@@ -35,6 +69,7 @@ public class TableManager : UdonSharpBehaviour
         graphics = _graphics;
     }
 
+    // Flash the table
     public void flashFoul()
     {
         graphics._FlashTableColor(k_colour_foul);

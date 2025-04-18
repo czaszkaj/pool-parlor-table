@@ -116,7 +116,7 @@ public class PlayerManager : UdonSharpBehaviour
     {
         if (Networking.LocalPlayer == null) return;
 
-        if (!table.lobbyOpen) return;
+        if (!table.game.lobbyOpen) return;
 
         VRCPlayerApi gameHost = _GetPlayerByName(playerNamesLocal[0]);
         if (!Utilities.IsValid(gameHost))
@@ -163,12 +163,12 @@ public class PlayerManager : UdonSharpBehaviour
     public bool isOurTurn()
     {
         // TODO: verify what this actually checks
-        return localPlayerId >= 0 && (localTeamId == table.teamIdLocal || table.isPracticeMode);
+        return localPlayerId >= 0 && (localTeamId == table.teamIdLocal || table.game.table.isPracticeMode);
     }
 
     public bool IsPickupAllowed()
     {
-        return isOurTurn() && table.isPracticeMode || IsLocalPlayerReferee();
+        return isOurTurn() && table.game.table.isPracticeMode || IsLocalPlayerReferee();
     }
 
     public bool IsLocalPlayerReferee()

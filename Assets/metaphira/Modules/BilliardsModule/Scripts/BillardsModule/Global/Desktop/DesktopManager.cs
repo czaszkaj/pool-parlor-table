@@ -135,7 +135,7 @@ public class DesktopManager : UdonSharpBehaviour
             Vector3 flatCursor = cursor;
             flatCursor.y = 0.0f;
 
-            Vector3 shotDirection = flatCursor - table.ballsP[0];
+            Vector3 shotDirection = flatCursor - table.game.table.balls.ballsP[0];
 
             if (repositionMode)
             {
@@ -146,7 +146,7 @@ public class DesktopManager : UdonSharpBehaviour
                         isRepositioning = true;
 
                         Vector3 localPos = new Vector3(cursor.x, 0, cursor.z);
-                        Vector3 worldPos = table.balls[0].transform.parent.TransformPoint(localPos);
+                        Vector3 worldPos = table.game.table.balls.balls[0].transform.parent.TransformPoint(localPos);
                         Collider[] colliders = Physics.OverlapSphere(worldPos, k_BALL_RADIUS / 4f, 1 << 24);
                         foreach (Collider c in colliders)
                         {
@@ -167,7 +167,7 @@ public class DesktopManager : UdonSharpBehaviour
                 if (currentRepositioner != null)
                 {
                     Vector3 localPos = new Vector3(cursor.x, 0, cursor.z);
-                    Vector3 worldPos = table.balls[0].transform.parent.TransformPoint(localPos);
+                    Vector3 worldPos = table.game.table.balls.balls[0].transform.parent.TransformPoint(localPos);
                     worldPos.y = currentRepositioner.transform.position.y;
                     currentRepositioner.transform.position = worldPos;
                 }
@@ -307,8 +307,8 @@ public class DesktopManager : UdonSharpBehaviour
 
         Quaternion spinRot = Quaternion.AngleAxis(Mathf.Atan2(dir.x, dir.z) * Mathf.Rad2Deg, Vector3.up);
         Transform transformSurface = (Transform)table.managers.currentPhysicsManager.GetProgramVariable("transform_Surface");
-        cue._GetDesktopMarker().transform.position = transformSurface.TransformPoint(table.ballsP[0] + (spinRot * cueGripPos));
-        cue._GetDesktopMarker().transform.LookAt(transformSurface.TransformPoint(table.ballsP[0] + (spinRot * ballHitPos)));
+        cue._GetDesktopMarker().transform.position = transformSurface.TransformPoint(table.game.table.balls.ballsP[0] + (spinRot * cueGripPos));
+        cue._GetDesktopMarker().transform.LookAt(transformSurface.TransformPoint(table.game.table.balls.ballsP[0] + (spinRot * ballHitPos)));
     }
 
     private void stopRepositioning()

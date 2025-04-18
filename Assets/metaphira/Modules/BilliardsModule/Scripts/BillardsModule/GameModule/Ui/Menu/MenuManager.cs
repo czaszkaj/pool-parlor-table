@@ -51,13 +51,13 @@ public class MenuManager : UdonSharpBehaviour
 
     public void _Tick()
     {
-        if (table.gameLive) return;
+        if (table.game.gameLive) return;
         
         // animate team cover
-        teamCover.transform.localScale = Vector3.Lerp(teamCover.transform.localScale, table.teamsLocal ? new Vector3(0, 1, 1) : new Vector3(1, 1, 1), Time.deltaTime * 5.0f);
+        teamCover.transform.localScale = Vector3.Lerp(teamCover.transform.localScale, table.game.table.teamsLocal ? new Vector3(0, 1, 1) : new Vector3(1, 1, 1), Time.deltaTime * 5.0f);
 
         // animate menu swap
-        menuSettings.transform.localScale = Vector3.Lerp(menuSettings.transform.localScale, table.lobbyOpen ? Vector3.one : Vector3.zero, Time.deltaTime * 5.0f);
+        menuSettings.transform.localScale = Vector3.Lerp(menuSettings.transform.localScale, table.game.lobbyOpen ? Vector3.one : Vector3.zero, Time.deltaTime * 5.0f);
         menuStart.transform.localScale = Vector3.one - menuSettings.transform.localScale;
 
         // animate timer slider
@@ -68,7 +68,7 @@ public class MenuManager : UdonSharpBehaviour
         if (timerSpinPlaying && Mathf.Abs(targetPosition - position.x) < 0.01f)
         {
             timerSpinPlaying = false;
-            table.aud_main.PlayOneShot(table.snd_spinstop);
+            table.aud_main.PlayOneShot(table.audio.snd_spinstop);
         }
     }
     
@@ -124,7 +124,7 @@ public class MenuManager : UdonSharpBehaviour
         buttonPlay._ResetButton();
         buttonLeave._ResetButton();
 
-        if (table.lobbyOpen)
+        if (table.game.lobbyOpen)
         {
             // If in the game
             if (table.playerManager.localPlayerId >= 0)
@@ -152,8 +152,8 @@ public class MenuManager : UdonSharpBehaviour
                 buttonPlay.gameObject.SetActive(false);
                 buttonLeave.gameObject.SetActive(false);
 
-                buttonJoinOrange.gameObject.SetActive(table.playerManager.playerNamesLocal[0] == "" || (table.teamsLocal && table.playerManager.playerNamesLocal[2] == ""));
-                buttonJoinBlue.gameObject.SetActive(table.playerManager.playerNamesLocal[1] == "" || (table.teamsLocal && table.playerManager.playerNamesLocal[3] == ""));
+                buttonJoinOrange.gameObject.SetActive(table.playerManager.playerNamesLocal[0] == "" || (table.game.table.teamsLocal && table.playerManager.playerNamesLocal[2] == ""));
+                buttonJoinBlue.gameObject.SetActive(table.playerManager.playerNamesLocal[1] == "" || (table.game.table.teamsLocal && table.playerManager.playerNamesLocal[3] == ""));
             }
         }
         else
@@ -167,7 +167,7 @@ public class MenuManager : UdonSharpBehaviour
 
     public void _RefreshPlayerList()
     {
-        for (int i = 0; i < (table.teamsLocal ? 4 : 2); i++)
+        for (int i = 0; i < (table.game.table.teamsLocal ? 4 : 2); i++)
         {
             lobbyNames[i].text = table.managers.graphicsManager._FormatName(table.playerManager.playerNamesLocal[i]);
         }
@@ -184,15 +184,15 @@ public class MenuManager : UdonSharpBehaviour
         {
             selectedTimerPrev = selectedTimer;
             timerSpinPlaying = true;
-            table.aud_main.PlayOneShot(table.snd_spin);
+            table.aud_main.PlayOneShot(table.audio.snd_spin);
         }
     }
 
     public void _RefreshToggleSettings()
     {
-        buttonTeamsToggle._SetButtonToggle(table.teamsLocal);
-        buttonGuidelineToggle._SetButtonToggle(!table.noGuidelineLocal);
-        buttonLockingToggle._SetButtonToggle(!table.noLockingLocal);
+        buttonTeamsToggle._SetButtonToggle(table.game.table.teamsLocal);
+        buttonLockingToggle._SetButtonToggle(!table.game.table.common.lockingEnabledLocal);
+        buttonGuidelineToggle._SetButtonToggle(!table.game.table.common.guideLineEnabledLocal);
 
         _RefreshPlayerList();
     }
@@ -302,7 +302,7 @@ public class MenuManager : UdonSharpBehaviour
     private void joinTeam(int id)
     {
         // Create new lobby
-        if (!table.lobbyOpen)
+        if (!table.game.lobbyOpen)
         {
             table._TriggerLobbyOpen();
         }

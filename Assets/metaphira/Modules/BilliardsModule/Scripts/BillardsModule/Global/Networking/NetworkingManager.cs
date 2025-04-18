@@ -172,7 +172,7 @@ public class NetworkingManager : UdonSharpBehaviour
             return;
         }
 
-        if (table.isLocalSimulationRunning && isUrgentSynced == 0)
+        if (table.game.isLocalSimulationRunning && isUrgentSynced == 0)
         {
             table._LogInfo("received non-urgent update, deferring until local simulation is complete");
             hasDeferredUpdate = true;
@@ -187,10 +187,10 @@ public class NetworkingManager : UdonSharpBehaviour
         if (lastProcessedPacketId == packetIdSynced) return;
         // if (!hasLocalUpdate && !hasDeferredUpdate) return;
 
-        if (table.isLocalSimulationRunning)
+        if (table.game.isLocalSimulationRunning)
         {
             if (isUrgentSynced == 0) return;
-            else if (isUrgentSynced == 2) table.isLocalSimulationRunning = false;
+            else if (isUrgentSynced == 2) table.game.isLocalSimulationRunning = false;
         }
 
         lastProcessedPacketId = packetIdSynced;
@@ -500,7 +500,7 @@ public class NetworkingManager : UdonSharpBehaviour
 
     private void bufferMessages(bool urgent)
     {
-        if (table.gameLive && !table.playerManager.isAnyPlayerActive())
+        if (table.game.gameLive && !table.playerManager.isAnyPlayerActive())
         {
             table.logger._LogWarn("refusing to broadcast game state since local player is not playing in the current game");
             return;

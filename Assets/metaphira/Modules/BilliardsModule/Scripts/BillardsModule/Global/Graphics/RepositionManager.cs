@@ -21,7 +21,7 @@ public class RepositionManager : UdonSharpBehaviour
     {
         table = table_;
 
-        repositioning = new bool[table.balls.Length];
+        repositioning = new bool[table.game.table.balls.balls.Length];
 
         _OnGameStarted();
     }
@@ -29,7 +29,7 @@ public class RepositionManager : UdonSharpBehaviour
     public void _OnGameStarted()
     {
         repositionCount = 0;
-        table.isBreak = true;
+        table.game.isBreak = true;
         Array.Clear(repositioning, 0, repositioning.Length);
     }
 
@@ -43,14 +43,14 @@ public class RepositionManager : UdonSharpBehaviour
         for (int i = 0; i < repositioning.Length; i++)
         {
             if (!repositioning[i]) continue;
-            if (i > 0 && !table.isPracticeMode && !table.playerManager.IsLocalPlayerReferee()) continue;
+            if (i > 0 && !table.game.table.isPracticeMode && !table.playerManager.IsLocalPlayerReferee()) continue;
 
-            GameObject ball = table.balls[i];
+            GameObject ball = table.game.table.balls.balls[i];
 
             Transform pickupTransform = ball.transform.GetChild(0);
 
             float maxX;
-            if (table.isPracticeMode)
+            if (table.game.table.isPracticeMode)
             {
                 maxX = k_pR.x;
             }
@@ -82,7 +82,7 @@ public class RepositionManager : UdonSharpBehaviour
                 GameObject collided = colliders[j].gameObject;
                 if (collided == ball) continue;
 
-                int collidedBall = Array.IndexOf(table.balls, collided);
+                int collidedBall = Array.IndexOf(table.game.table.balls.balls, collided);
                 if (collidedBall != -1)
                 {
                     collides = true;
@@ -98,19 +98,19 @@ public class RepositionManager : UdonSharpBehaviour
 
             if (!collides)
             {
-                if (table.isSnooker6Red && i == 0 && table.isBreak)
+                if (table.game.table.isSnooker6Red && i == 0 && table.game.isBreak)
                 {
                     Vector3 snookerCircleCenter = snookerCircle.transform.localPosition;
                     float radius = 0.24f;
 
                     bool isNewLocationInCircle = IsInSemiCircle(boundedLocation, snookerCircleCenter, radius);
-                    bool isCurrentLocationInCircle = IsInSemiCircle(table.ballsP[i], snookerCircleCenter, radius);
+                    bool isCurrentLocationInCircle = IsInSemiCircle(table.game.table.balls.ballsP[i], snookerCircleCenter, radius);
 
-                    boundedLocation.x = isNewLocationInCircle ? boundedLocation.x : (isCurrentLocationInCircle ? table.ballsP[i].x : snookerCircleCenter.x);
-                    boundedLocation.z = isNewLocationInCircle ? boundedLocation.z : (isCurrentLocationInCircle ? table.ballsP[i].z : snookerCircleCenter.z);
+                    boundedLocation.x = isNewLocationInCircle ? boundedLocation.x : (isCurrentLocationInCircle ? table.game.table.balls.ballsP[i].x : snookerCircleCenter.x);
+                    boundedLocation.z = isNewLocationInCircle ? boundedLocation.z : (isCurrentLocationInCircle ? table.game.table.balls.ballsP[i].z : snookerCircleCenter.z);
                 }
                 // no collisions, we can update the position and reset the pickup
-                table.ballsP[i] = boundedLocation;
+                table.game.table.balls.ballsP[i] = boundedLocation;
 
                 pickupTransform.localPosition = Vector3.zero;
                 pickupTransform.localRotation = Quaternion.identity;
@@ -157,7 +157,7 @@ public class RepositionManager : UdonSharpBehaviour
     private bool canReposition(Repositioner grip)
     {
         VRCPlayerApi self = Networking.LocalPlayer;
-        if (!table.gameLive)
+        if (!table.game.gameLive)
         {
             return false;
         }
@@ -167,7 +167,7 @@ public class RepositionManager : UdonSharpBehaviour
         }
         if (grip.idx > 0)
         {
-            if (!table.isPracticeMode && !table.playerManager._IsReferee(self))
+            if (!table.game.table.isPracticeMode && !table.playerManager._IsReferee(self))
             {
                 return false;
             }

@@ -9,6 +9,10 @@ using System;
 public class GameModule : UdonSharpBehaviour
 {
     [NonSerialized] [HideInInspector] public TableManager table;
+    [NonSerialized][HideInInspector]  public bool lobbyOpen,
+                                                  gameLive,
+                                                  isBreak,
+                                                  isLocalSimulationRunning;
 
     void Start()
     {

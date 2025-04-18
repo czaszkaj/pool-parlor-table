@@ -81,7 +81,7 @@ public class CueController : UdonSharpBehaviour
     private void refreshCueSkin()
     {
         MeshRenderer renderer = this.transform.Find("body/render").GetComponent<MeshRenderer>();
-        renderer.materials[1].SetTexture("_MainTex", table.cueSkins[activeCueSkin]);
+        renderer.materials[1].SetTexture("_MainTex", table.game.table.cues.cueSkins[activeCueSkin]);
     }
 
     public override bool OnOwnershipRequest(VRCPlayerApi requester, VRCPlayerApi newOwner)
@@ -119,7 +119,7 @@ public class CueController : UdonSharpBehaviour
             // must not be shooting, since that takes control of the cue object
             if (!table.managers.desktopManager._IsInUI() || !table.managers.desktopManager._IsShooting())
             {
-                if (!primaryLocked || table.noLockingLocal)
+                if (!primaryLocked || table.game.table.common.lockingEnabledLocal)
                 {
                     // base of cue goes to primary
                     body.transform.position = lagPrimaryPosition;
@@ -174,7 +174,7 @@ public class CueController : UdonSharpBehaviour
             if (!syncedHolderIsDesktop)
             {
                 // other player is in vr, use the grips which update faster
-                if (!primaryLocked || table.noLockingLocal)
+                if (!primaryLocked || table.game.table.common.lockingEnabledLocal)
                 {
                     // base of cue goes to primary
                     body.transform.position = lagPrimaryPosition;

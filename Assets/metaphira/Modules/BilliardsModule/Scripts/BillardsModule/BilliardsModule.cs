@@ -17,15 +17,28 @@ using Metaphira.Modules.CameraOverride;
 [UdonBehaviourSyncMode(BehaviourSyncMode.NoVariableSync)]
 public class BilliardsModule : UdonSharpBehaviour
 {
-    // New parameters
-    [NonSerialized] [HideInInspector] public GameModule game;
-    [NonSerialized] [HideInInspector] public Logger logger;
-    [NonSerialized] [HideInInspector] public PlayerManager playerManager;
+    // TODO: To be used in debugger
+    // Base version before fork: 1.0.4
+    [NonSerialized] public readonly string VERSION = "1.0.4"; // "1.1.0"; // After refactor
+
+    // Non-Serialized Dependecies
+    [NonSerialized]  public GameModule game;
+    [NonSerialized]  public Logger logger;
+    [NonSerialized]  public PlayerManager playerManager;
+    [NonSerialized]  public AudioManager audio;
+
+    // Serialized parameters
+    [SerializeField] Text ltext;    // DebbugerText : TODO: rename
+    // Somethign related with reflection.
+    // TODO: analyze why we need this
+    [SerializeField] ReflectionProbe reflection_main;
 
     #region ParametersMovedToOtherClasses
     // TODO: Remove
     // TODO: check why we get error for serialization if this is removed.
     // If too obnoxious just redo This class after everything
+    // Maybe we need to remove This asset from Unity before removing serialized data
+    // ONLY!!! validate after chnages are moved to GIT
 
     [SerializeField] [HideInInspector] public Color k_colour_foul,        // v1.6: ( 1.2, 0.0, 0.0, 1.0 )
                                                     k_colour_default,     // v1.6: ( 1.0, 1.0, 1.0, 1.0 )
@@ -41,102 +54,51 @@ public class BilliardsModule : UdonSharpBehaviour
                                                     k_fabricColour_9ball, // v1.6: ( 0.1, 0.6, 1.0, 1.0 )
                                                     k_fabricColour_4ball; // v1.6: ( 0.15, 0.75, 0.3, 1.0 )
 
+    [SerializeField] [HideInInspector] public Texture[] textureSets;
+    [SerializeField] [HideInInspector] public ModelData[] tableModels;
+    [SerializeField] [HideInInspector] public Texture2D[] tableSkins;
+    [SerializeField] [HideInInspector] public Texture snookerTexture;
+    [SerializeField] [HideInInspector] public Transform[] coloredPositions;
+    [SerializeField] [HideInInspector] public UdonSharpBehaviour cameraModule;
+    [SerializeField] [HideInInspector] public AudioClip snd_Intro,
+                                                        snd_Sink,
+                                                        snd_NewTurn,
+                                                        snd_PointMade,
+                                                        snd_btn,
+                                                        snd_spin,
+                                                        snd_spinstop,
+                                                        snd_hitball;
+    [SerializeField] [HideInInspector] public Texture2D[] cueSkins;
+    [SerializeField] [HideInInspector] public GameObject guideline,
+                                                         devhit,
+                                                         markerObj,
+                                                         marker9ball;
+    [SerializeField] [HideInInspector] public CueController[] cueControllers;
+    [SerializeField] [HideInInspector] public GameObject[] balls;
+    [NonSerialized] public uint ballsPocketedLocal,
+                                fourBallCueBallLocal;
+    [SerializeField] Text infReset; // Text under reset button
     #endregion
-    // Old parameters position
-    #region InspectorValues
-    // Table Manager
+    #region ParametersMovedToOtherClassesButNoClueWhatItIs
 
-    [Header("Textures")]
-    // Each is own module. What is Texture? way too ogscure name.
-    [SerializeField] public Texture[] textureSets;
-    [SerializeField] public ModelData[] tableModels;
-    [SerializeField] public Texture2D[] tableSkins;
-    [SerializeField] public Texture2D[] cueSkins;
-    [HideInInspector][SerializeField] public Texture snookerTexture;
-
-    [Header("Snooker Spawn Positions")]
-    [SerializeField] public Transform[] coloredPositions;
-
-    [Header("Managers")]
-    [NonSerialized] public ManagerController managers;
-
-    [SerializeField] public UdonSharpBehaviour cameraModule;
-
-    [HideInInspector]
-    [SerializeField] public AudioClip snd_Intro,
-                                      snd_Sink,
-                                      snd_NewTurn,
-                                      snd_PointMade,
-                                      snd_btn,
-                                      snd_spin,
-                                      snd_spinstop,
-                                      snd_hitball;
-
-    [Space(10)]
-    [Header("Internal (no touching!)")]
-
-    [SerializeField] public CueController[] cueControllers;
-
-    [SerializeField] public GameObject[] balls;
-
-    [SerializeField] public GameObject guideline,
-                                       devhit,
-                                       markerObj,
-                                       marker9ball;
-
-    [SerializeField] Text ltext;
-    [SerializeField] Text infReset;
-
-    [SerializeField] ReflectionProbe reflection_main;
     #endregion
-
-    #region NonSerialized
-    [NonSerialized] public readonly string[] DEPENDENCIES = new string[] { nameof(CameraOverrideModule) };
-    [NonSerialized] public readonly string VERSION = "6.0.0";
-    [NonSerialized] public readonly int[] sixredsnooker_ballpoints = { 0, 7, 2, 5, 1, 6, 1, 3, 4, 1, 1, 1, 1 },
-                                          break_order_sixredsnooker = { 4, 6, 9, 10, 11, 12, 2, 7, 8, 3, 5, 1 },
-                                          break_order_8ball = { 9, 2, 10, 11, 1, 3, 4, 12, 5, 13, 14, 6, 15, 7, 8 },
-                                          break_order_9ball = { 2, 3, 4, 5, 9, 6, 7, 8, 1 },
-                                          break_rows_9ball = { 0, 1, 2, 1, 0 };
-
+    #region ToeBeMovedNotSureWhere
     [NonSerialized] public const int PERF_MAX = 6;
-
-    [NonSerialized] public Vector3[] ballsP = new Vector3[16],
-                                     ballsV = new Vector3[16],
-                                     ballsW = new Vector3[16];
-
-    [NonSerialized] public int[] fbScoresLocal = new int[2];
-
     [NonSerialized] public float repoMaxX;
+    #endregion
+    #region ToeBeRemoved
+    [NonSerialized] public ManagerController managers;
+    #endregion
 
-    [NonSerialized] public bool lobbyOpen,
-                                gameLive,
-                                teamsLocal,
-                                noGuidelineLocal,
-                                noLockingLocal,
-                                isTableOpenLocal,
-                                canPlayLocal,
-                                isGuidelineValid,
-                                colorTurnLocal,
-                                redsOnTable,
-                                isBreak,
-                                isLocalSimulationRunning,
-                                canHitCueBall = false,
-                                isReposition = false,
-                                is8Ball = false,
-                                is9Ball = false,
-                                is4Ball = false,
-                                isJp4Ball = false,
-                                isKr4Ball = false,
-                                isSnooker6Red = false,
-                                isPracticeMode = false,
-                                timerRunning = false;
+
+    // Most likely it is possible to just delete those
+    #region NonSerialized
+    // Move to rules
+    // Validate indexing
 
     [NonSerialized] public uint gameModeLocal,
                                 timerLocal,
-                                ballsPocketedLocal,
                                 teamIdLocal,
-                                fourBallCueBallLocal,
                                 teamColorLocal,
                                 winningTeamLocal,
                                 previewWinningTeamLocal;
@@ -213,8 +175,7 @@ public class BilliardsModule : UdonSharpBehaviour
                 secondHit = 0,
                 thirdHit = 0;
 
-    private uint repositionStateLocal,
-                 ballsPocketedOrig;
+    private uint repositionStateLocal;
 
     private bool isLocalSimulationOurs = false,
                  fbMadePoint = false,
@@ -242,8 +203,8 @@ public class BilliardsModule : UdonSharpBehaviour
 
         aud_main = this.GetComponent<AudioSource>();
 
-        for (int i = 0; i < balls.Length; i++)
-            balls[i].GetComponentInChildren<Repositioner>(true)._Init(this, i);
+        for (int i = 0; i < game.table.balls.balls.Length; i++)
+            game.table.balls.balls[i].GetComponentInChildren<Repositioner>(true)._Init(this, i);
 
         managers._Init(this);
 
@@ -307,10 +268,10 @@ public class BilliardsModule : UdonSharpBehaviour
     // TODO: verify
     public UdonSharpBehaviour _GetModule(string type)
     {
-        string[] parts = cameraModule.GetUdonTypeName().Split('.');
+        string[] parts = game.table.cameraModule.GetUdonTypeName().Split('.');
         if (parts[parts.Length - 1] == type)
         {
-            return cameraModule;
+            return game.table.cameraModule;
         }
         return null;
     }
@@ -320,7 +281,7 @@ public class BilliardsModule : UdonSharpBehaviour
     // TODO: verify
     public void _TriggerLobbyOpen()
     {
-        if (lobbyOpen) return;
+        if (game.lobbyOpen) return;
 
         managers.networkingManager._OnLobbyOpened();
     }
@@ -378,20 +339,20 @@ public class BilliardsModule : UdonSharpBehaviour
     // TODO: verify
     public void _TriggerCueBallHit()
     {
-        if (playerManager.localTeamId != teamIdLocal && !isPracticeMode) return; // is there a better way to do this?
+        if (playerManager.localTeamId != teamIdLocal && !game.table.isPracticeMode) return; // is there a better way to do this?
 
-        logger._LogWarn("trying to propagate cue ball hit, linear velocity is " + ballsV[0].ToString("F4") + " and angular velocity is " + ballsW[0].ToString("F4"));
+        logger._LogWarn("trying to propagate cue ball hit, linear velocity is " + game.table.balls.ballsV[0].ToString("F4") + " and angular velocity is " + game.table.balls.ballsW[0].ToString("F4"));
 
-        if (float.IsNaN(ballsV[0].x) || float.IsNaN(ballsV[0].y) || float.IsNaN(ballsV[0].z) || float.IsNaN(ballsW[0].x) || float.IsNaN(ballsW[0].y) || float.IsNaN(ballsW[0].z))
+        if (float.IsNaN(game.table.balls.ballsV[0].x) || float.IsNaN(game.table.balls.ballsV[0].y) || float.IsNaN(game.table.balls.ballsV[0].z) || float.IsNaN(game.table.balls.ballsW[0].x) || float.IsNaN(game.table.balls.ballsW[0].y) || float.IsNaN(game.table.balls.ballsW[0].z))
         {
-            ballsV[0] = Vector3.zero;
-            ballsW[0] = Vector3.zero;
+            game.table.balls.ballsV[0] = Vector3.zero;
+            game.table.balls.ballsW[0] = Vector3.zero;
             return;
         }
 
         _TriggerCueDeactivate();
 
-        managers.networkingManager._OnHitBall(ballsV[0], ballsW[0]);
+        managers.networkingManager._OnHitBall(game.table.balls.ballsV[0], game.table.balls.ballsW[0]);
     }
 
     // CueManager?
@@ -400,13 +361,13 @@ public class BilliardsModule : UdonSharpBehaviour
     {
         if (!playerManager.isOurTurn()) return;
 
-        if (Vector3.Distance(activeCue._GetCuetip().transform.position, ballsP[0]) < k_BALL_RADIUS)
+        if (Vector3.Distance(activeCue._GetCuetip().transform.position, game.table.balls.ballsP[0]) < k_BALL_RADIUS)
         {
             _TriggerCueDeactivate();
             return;
         }
 
-        canHitCueBall = true;
+        game.table.canHitCueBall = true;
         this._TriggerOnPlayerPrepareShoot();
 
 #if !HT_QUEST
@@ -418,10 +379,10 @@ public class BilliardsModule : UdonSharpBehaviour
     // TODO: verify
     public void _TriggerCueDeactivate()
     {
-        canHitCueBall = false;
+        game.table.canHitCueBall = false;
 
 #if !HT_QUEST
-        guideline.gameObject.transform.Find("guide_display").GetComponent<MeshRenderer>().material.SetColor("_Colour", k_aimColour_aim);
+        game.table.cues.guideline.gameObject.transform.Find("guide_display").GetComponent<MeshRenderer>().material.SetColor("_Colour", k_aimColour_aim);
 #endif
     }
 
@@ -457,7 +418,7 @@ public class BilliardsModule : UdonSharpBehaviour
     // TODO: verify
     public void _TriggerPlaceBall(int idx)
     {
-        if (!canPlayLocal) return; // in case player was forced to drop ball since someone else took the shot
+        if (!game.table.canPlayLocal) return; // in case player was forced to drop ball since someone else took the shot
 
         // practiceManager._Record();
 
@@ -470,7 +431,7 @@ public class BilliardsModule : UdonSharpBehaviour
             consumeReposition = !isTouching;
         }
 
-        managers.networkingManager._OnRepositionBalls(ballsP, consumeReposition);
+        managers.networkingManager._OnRepositionBalls(game.table.balls.ballsP, consumeReposition);
     }
 
     // GameManager?
@@ -527,9 +488,9 @@ public class BilliardsModule : UdonSharpBehaviour
     {
         string self = Networking.LocalPlayer.displayName;
 
-        if (!gameLive)
+        if (!game.gameLive)
         {
-            if (lobbyOpen && playerManager._IsModerator(Networking.LocalPlayer))
+            if (game.lobbyOpen && playerManager._IsModerator(Networking.LocalPlayer))
             {
                 managers.networkingManager._OnLobbyClosed();
             }
@@ -570,7 +531,7 @@ public class BilliardsModule : UdonSharpBehaviour
                 playerStr += managers.graphicsManager._FormatName(allowedPlayer);
             }
 
-            infReset.text = "Only these players may reset:\n" + playerStr;
+            game.table.infReset.text = "Only these players may reset:\n" + playerStr;
         }
     }
     #endregion
@@ -625,7 +586,7 @@ public class BilliardsModule : UdonSharpBehaviour
     // TODO: verify, simplify
     private void onRemoteGlobalSettingsUpdated(string tournamentRefereeSynced, byte tableModelSynced, byte tableSkinSynced)
     {
-        if (gameLive) return;
+        if (game.gameLive) return;
 
         if (
             playerManager.tournamentRefereeLocal == tournamentRefereeSynced &&
@@ -660,9 +621,9 @@ public class BilliardsModule : UdonSharpBehaviour
     {
         if (gameModeLocal == gameModeSynced &&
             timerLocal == timerSynced &&
-            teamsLocal == teamsSynced &&
-            noGuidelineLocal == noGuidelineSynced &&
-            noLockingLocal == noLockingSynced) return;
+            game.table.teamsLocal == teamsSynced &&
+            game.table.common.guideLineEnabledLocal == noGuidelineSynced &&
+            game.table.common.lockingEnabledLocal == noLockingSynced) return;
 
         logger._LogInfo($"onRemoteGameSettingsUpdated gameMode={gameModeSynced} timer={timerSynced} teams={teamsSynced} guideline={!noGuidelineSynced} locking={!noLockingSynced}");
 
@@ -670,12 +631,12 @@ public class BilliardsModule : UdonSharpBehaviour
         {
             gameModeLocal = gameModeSynced;
 
-            is8Ball = gameModeLocal == 0u;
-            is9Ball = gameModeLocal == 1u;
-            isJp4Ball = gameModeLocal == 2u;
-            isKr4Ball = gameModeLocal == 3u;
-            isSnooker6Red = gameModeLocal == 4u;
-            is4Ball = isJp4Ball || isKr4Ball;
+            game.table.is8Ball = gameModeLocal == 0u;
+            game.table.is9Ball = gameModeLocal == 1u;
+            game.table.isJp4Ball = gameModeLocal == 2u;
+            game.table.isKr4Ball = gameModeLocal == 3u;
+            game.table.isSnooker6Red = gameModeLocal == 4u;
+            game.table.is4Ball = game.table.isJp4Ball || game.table.isKr4Ball;
 
             managers.menuManager._RefreshGameMode();
         }
@@ -688,9 +649,9 @@ public class BilliardsModule : UdonSharpBehaviour
         }
 
         bool refreshToggles = false;
-        setToggle(ref teamsLocal, teamsSynced, ref refreshToggles);
-        setToggle(ref noGuidelineLocal, noGuidelineSynced, ref refreshToggles);
-        setToggle(ref noLockingLocal, noLockingSynced, ref refreshToggles);
+        setToggle(ref game.table.teamsLocal, teamsSynced, ref refreshToggles);
+        setToggle(ref game.table.common.guideLineEnabledLocal, noGuidelineSynced, ref refreshToggles);
+        setToggle(ref game.table.common.lockingEnabledLocal, noLockingSynced, ref refreshToggles);
 
         if (refreshToggles)
             managers.menuManager._RefreshToggleSettings();
@@ -741,7 +702,7 @@ public class BilliardsModule : UdonSharpBehaviour
     {
         logger._LogInfo($"onRemoteLobbyOpened");
 
-        lobbyOpen = true;
+        game.lobbyOpen = true;
         managers.graphicsManager._OnLobbyOpened();
         managers.menuManager._RefreshLobbyOpen();
         managers.menuManager._RefreshPlayerList();
@@ -755,7 +716,7 @@ public class BilliardsModule : UdonSharpBehaviour
     {
         logger._LogInfo($"onRemoteLobbyClosed");
 
-        lobbyOpen = false;
+        game.lobbyOpen = false;
         playerManager.localPlayerId = -1;
         managers.graphicsManager._OnLobbyClosed();
         managers.menuManager._RefreshLobbyOpen();
@@ -771,14 +732,14 @@ public class BilliardsModule : UdonSharpBehaviour
     {
         logger._LogInfo($"onRemoteGameStarted");
 
-        lobbyOpen = false;
-        gameLive = true;
+        game.lobbyOpen = false;
+        game.gameLive = true;
 
         Array.Clear(perfCounters, 0, PERF_MAX);
         Array.Clear(perfStart, 0, PERF_MAX);
         Array.Clear(perfTimings, 0, PERF_MAX);
 
-        isPracticeMode = playerManager.playerNamesLocal[1] == "" && playerManager.playerNamesLocal[3] == "";
+        game.table.isPracticeMode = playerManager.playerNamesLocal[1] == "" && playerManager.playerNamesLocal[3] == "";
 
         managers.menuManager._DisableMenu();
 
@@ -787,27 +748,27 @@ public class BilliardsModule : UdonSharpBehaviour
         applyCueAccess(false);
         managers.practiceManager._Clear();
         managers.repositionManager._OnGameStarted();
-        if (isPracticeMode)
+        if (game.table.isPracticeMode)
             cueControllers[1].gameObject.SetActive(false);
 
-        Array.Clear(fbScoresLocal, 0, 2);
-        auto_pocketblockers.SetActive(is4Ball);
-        marker9ball.SetActive(is9Ball);
+        Array.Clear(game.table.rule4Ball.scoresLocal, 0, 2);
+        auto_pocketblockers.SetActive(game.table.is4Ball);
+        game.table.balls.marker9ball.SetActive(game.table.is9Ball);
 
         managers.graphicsManager._ShowBalls();
 
         // Reflect game state
         managers.graphicsManager._UpdateScorecard();
-        isReposition = false;
-        markerObj.SetActive(false);
+        game.table.isReposition = false;
+        game.table.balls.markerObj.SetActive(false);
 
         // Effects
         managers.graphicsManager._PlayIntroAnimation();
-        aud_main.PlayOneShot(snd_Intro, 1.0f);
+        aud_main.PlayOneShot(audio.snd_Intro, 1.0f);
 
         managers.graphicsManager._SetScorecardPlayers(playerManager.playerNamesLocal);
 
-        timerRunning = false;
+        game.table.timerRunning = false;
 
         reflection_main.RenderProbe();
 
@@ -818,11 +779,11 @@ public class BilliardsModule : UdonSharpBehaviour
     // TODO: verify, simplify
     private void onRemoteBallPositionsChanged(Vector3[] ballsPSynced)
     {
-        if (ballsP.Equals(ballsPSynced)) return;
+        if (game.table.balls.ballsP.Equals(ballsPSynced)) return;
 
         logger._LogInfo($"onRemoteBallPositionsChanged");
 
-        Array.Copy(ballsPSynced, ballsP, ballsP.Length);
+        Array.Copy(ballsPSynced, game.table.balls.ballsP, game.table.balls.ballsP.Length);
     }
 
 
@@ -830,7 +791,7 @@ public class BilliardsModule : UdonSharpBehaviour
     // TODO: verify, simplify
     private void onRemotePreviewWinningTeamChanged(uint previewWinningTeamSynced)
     {
-        if (!gameLive) return;
+        if (!game.gameLive) return;
         if (string.IsNullOrEmpty(playerManager.tournamentRefereeLocal)) return;
 
         if (previewWinningTeamLocal == previewWinningTeamSynced) return;
@@ -841,7 +802,7 @@ public class BilliardsModule : UdonSharpBehaviour
         if (previewWinningTeamSynced == 2)
             managers.graphicsManager._ResetWinners();
         else
-            managers.graphicsManager._SetWinners(isPracticeMode ? 0u : previewWinningTeamSynced, playerManager.playerNamesLocal);
+            managers.graphicsManager._SetWinners(game.table.isPracticeMode ? 0u : previewWinningTeamSynced, playerManager.playerNamesLocal);
     }
 
     // TableManager/RuleManager
@@ -850,7 +811,7 @@ public class BilliardsModule : UdonSharpBehaviour
     {
         logger._LogInfo($"onRemoteGameEnded winningTeam={winningTeamSynced}");
 
-        isLocalSimulationRunning = false;
+        game.isLocalSimulationRunning = false;
 
         if (playerManager.IsLocalPlayerReferee())
         {
@@ -871,17 +832,17 @@ public class BilliardsModule : UdonSharpBehaviour
         {
             winningTeamLocal = 0;
 
-            isTableOpenLocal = true;
+            game.table.isTableOpenLocal = true;
             logger._LogWarn("game reset");
             managers.graphicsManager._OnGameReset();
         }
         else
         {
             logger._LogWarn("game over, team " + winningTeamLocal + " won (" + playerManager.playerNamesLocal[winningTeamLocal] + " and " + playerManager.playerNamesLocal[winningTeamLocal + 2] + ")");
-            managers.graphicsManager._SetWinners(isPracticeMode ? 0u : winningTeamLocal, playerManager.playerNamesLocal);
+            managers.graphicsManager._SetWinners(game.table.isPracticeMode ? 0u : winningTeamLocal, playerManager.playerNamesLocal);
         }
 
-        gameLive = false;
+        game.gameLive = false;
 
         managers.graphicsManager._UpdateTeamColor(winningTeamSynced);
         managers.graphicsManager._UpdateScorecard();
@@ -904,19 +865,19 @@ public class BilliardsModule : UdonSharpBehaviour
 
         managers.menuManager._EnableMenu();
 
-        infReset.text = "Reset";
+        game.table.infReset.text = "Reset";
     }
 
     // TableManager
     // TODO: verify
     private void onRemoteBallsPocketedChanged(uint ballsPocketedSynced)
     {
-        if (!gameLive) return;
+        if (!game.gameLive) return;
 
         // todo: actually use a separate variable to track local modifications to balls pocketed
-        if (ballsPocketedLocal != ballsPocketedSynced) logger._LogInfo($"onRemoteBallsPocketedChanged ballsPocketed={ballsPocketedSynced:X}");
+        if (game.table.balls.ballsPocketedLocal != ballsPocketedSynced) logger._LogInfo($"onRemoteBallsPocketedChanged ballsPocketed={ballsPocketedSynced:X}");
 
-        ballsPocketedLocal = ballsPocketedSynced;
+        game.table.balls.ballsPocketedLocal = ballsPocketedSynced;
 
         managers.graphicsManager._UpdateScorecard();
         managers.graphicsManager._RackBalls();
@@ -928,13 +889,13 @@ public class BilliardsModule : UdonSharpBehaviour
     // TODO: verify
     private void onRemoteFourBallScoresUpdated(int[] fbScoresSynced)
     {
-        if (!gameLive) return;
+        if (!game.gameLive) return;
 
-        if (fbScoresLocal[0] == fbScoresSynced[0] && fbScoresLocal[1] == fbScoresSynced[1]) return;
+        if (game.table.rule4Ball.scoresLocal[0] == fbScoresSynced[0] && game.table.rule4Ball.scoresLocal[1] == fbScoresSynced[1]) return;
 
         logger._LogInfo($"onRemoteFourBallScoresUpdated team1={fbScoresSynced[0]} team2={fbScoresSynced[1]}");
 
-        Array.Copy(fbScoresSynced, fbScoresLocal, 2);
+        Array.Copy(fbScoresSynced, game.table.rule4Ball.scoresLocal, 2);
         managers.graphicsManager._UpdateScorecard();
     }
 
@@ -942,49 +903,49 @@ public class BilliardsModule : UdonSharpBehaviour
     // TODO: verify
     private void onRemoteTeamIdChanged(uint teamIdSynced)
     {
-        if (!gameLive) return;
+        if (!game.gameLive) return;
 
         if (teamIdLocal == teamIdSynced) return;
 
         logger._LogInfo($"onRemoteTeamIdChanged newTeam={teamIdSynced}");
         teamIdLocal = teamIdSynced;
 
-        aud_main.PlayOneShot(snd_NewTurn, 1.0f);
+        aud_main.PlayOneShot(audio.snd_NewTurn, 1.0f);
 
         managers.graphicsManager._UpdateTeamColor(teamIdLocal);
 
         // always use first cue if practice mode
-        activeCue = cueControllers[isPracticeMode ? 0 : (int)teamIdLocal];
+        activeCue = cueControllers[game.table.isPracticeMode ? 0 : (int)teamIdLocal];
     }
 
     // TableManager/RuleManager
     // TODO: verify
     private void onRemoteFourBallCueBallChanged(uint fourBallCueBallSynced)
     {
-        if (!gameLive) return;
-        if (!is4Ball) return;
+        if (!game.gameLive) return;
+        if (!game.table.is4Ball) return;
 
-        if (fourBallCueBallLocal == fourBallCueBallSynced) return;
+        if (game.table.balls.fourBallCueBallLocal == fourBallCueBallSynced) return;
 
         logger._LogInfo($"onRemoteFourBallCueBallChanged cueBall={fourBallCueBallSynced}");
-        fourBallCueBallLocal = fourBallCueBallSynced;
+        game.table.balls.fourBallCueBallLocal = fourBallCueBallSynced;
 
-        managers.graphicsManager._UpdateFourBallCueBallTextures(fourBallCueBallLocal);
+        managers.graphicsManager._UpdateFourBallCueBallTextures(game.table.balls.fourBallCueBallLocal);
     }
 
     // TableManager
     // TODO: verify
     private void onRemoteIsTableOpenChanged(bool isTableOpenSynced, uint teamColorSynced)
     {
-        if (!gameLive) return;
+        if (!game.gameLive) return;
 
-        if (teamColorLocal == teamColorSynced && isTableOpenLocal == isTableOpenSynced) return;
+        if (teamColorLocal == teamColorSynced && game.table.isTableOpenLocal == isTableOpenSynced) return;
 
         logger._LogInfo($"onRemoteIsTableOpenChanged isTableOpen={isTableOpenSynced} teamColor={teamColorSynced}");
-        isTableOpenLocal = isTableOpenSynced;
+        game.table.isTableOpenLocal = isTableOpenSynced;
         teamColorLocal = teamColorSynced;
 
-        if (!isTableOpenLocal)
+        if (!game.table.isTableOpenLocal)
         {
             string color = (teamIdLocal ^ teamColorLocal) == 0 ? "blues" : "oranges";
             logger._LogInfo($"table closed, team {teamIdLocal} is {color}");
@@ -998,18 +959,18 @@ public class BilliardsModule : UdonSharpBehaviour
     // TODO: verify
     private void onRemoteColorTurnChanged(bool ColorTurnSynced)
     {
-        if (!gameLive) return;
+        if (!game.gameLive) return;
 
-        if (colorTurnLocal == ColorTurnSynced) return;
+        if (game.table.colorTurnLocal == ColorTurnSynced) return;
 
         logger._LogInfo($"onRemoteColorTurnChanged colorTurn={ColorTurnSynced}");
-        colorTurnLocal = ColorTurnSynced;
+        game.table.colorTurnLocal = ColorTurnSynced;
     }
     // TableManager/PhysicsManager
     // TODO: verify, it's way too complicated for maintenace
     private void onRemoteRepositionStateChanged(uint repositionStateSynced)
     {
-        if (!gameLive) return;
+        if (!game.gameLive) return;
 
         if (repositionStateLocal == repositionStateSynced) return;
 
@@ -1018,14 +979,14 @@ public class BilliardsModule : UdonSharpBehaviour
 
         if (!playerManager.isOurTurn() || repositionStateLocal == 0)
         {
-            isReposition = false;
+            game.table.isReposition = false;
             setFoulPickupEnabled(false);
             return;
         }
 
         if (repositionStateLocal == 1 || repositionStateLocal == 2)
         {
-            isReposition = true;
+            game.table.isReposition = true;
             if (repositionStateLocal == 1)
             {
                 repoMaxX = -k_SPOT_POSITION_X;
@@ -1044,12 +1005,12 @@ public class BilliardsModule : UdonSharpBehaviour
     private void onRemoteTurnBegin(int timerStartSynced)
     {
         logger._LogInfo("onRemoteTurnBegin");
-        canPlayLocal = true;
+        game.table.canPlayLocal = true;
         timerStartLocal = timerStartSynced;
 
         enablePlayComponents();
-        Array.Clear(ballsV, 0, ballsV.Length);
-        Array.Clear(ballsW, 0, ballsW.Length);
+        Array.Clear(game.table.balls.ballsV, 0, game.table.balls.ballsV.Length);
+        Array.Clear(game.table.balls.ballsW, 0, game.table.balls.ballsW.Length);
     }
 
     // TableManager/BallManager/PhysicsManager
@@ -1058,9 +1019,9 @@ public class BilliardsModule : UdonSharpBehaviour
     {
         logger._LogInfo($"onRemoteTurnSimulate cueBallV={cueBallV.ToString("F4")} cueBallW={cueBallW.ToString("F4")} owner={simulationOwner}");
 
-        balls[0].GetComponent<AudioSource>().PlayOneShot(snd_hitball, 1.0f);
+        game.table.balls.balls[0].GetComponent<AudioSource>().PlayOneShot(audio.snd_hitball, 1.0f);
 
-        canPlayLocal = false;
+        game.table.canPlayLocal = false;
         disablePlayComponents();
 
         if (!playerManager._IsPlayer(Networking.LocalPlayer) && !table.GetComponent<MeshRenderer>().isVisible)
@@ -1070,26 +1031,26 @@ public class BilliardsModule : UdonSharpBehaviour
             return;
         }
 
-        isLocalSimulationRunning = true;
+        game.isLocalSimulationRunning = true;
         firstHit = 0;
         secondHit = 0;
         thirdHit = 0;
         fbMadePoint = false;
         fbMadeFoul = false;
-        isBreak = false;
-        ballsPocketedOrig = ballsPocketedLocal;
+        game.isBreak = false;
+        game.table.balls.ballsPocketedOrig = game.table.balls.ballsPocketedLocal;
         if (Networking.LocalPlayer.displayName == simulationOwner)
         {
             isLocalSimulationOurs = true;
         }
 
-        for (int i = 0; i < ballsV.Length; i++)
+        for (int i = 0; i < game.table.balls.ballsV.Length; i++)
         {
-            ballsV[i] = Vector3.zero;
-            ballsW[i] = Vector3.zero;
+            game.table.balls.ballsV[i] = Vector3.zero;
+            game.table.balls.ballsW[i] = Vector3.zero;
         }
-        ballsV[0] = cueBallV;
-        ballsW[0] = cueBallW;
+        game.table.balls.ballsV[0] = cueBallV;
+        game.table.balls.ballsW[0] = cueBallW;
 
         auto_colliderBaseVFX.SetActive(true);
     }
@@ -1097,7 +1058,7 @@ public class BilliardsModule : UdonSharpBehaviour
     // TableManager
     private void onRemoteTurnStateChanged(byte turnStateSynced)
     {
-        if (!gameLive) return;
+        if (!game.gameLive) return;
 
         if (turnStateSynced == turnStateLocal) return;
 
@@ -1118,7 +1079,7 @@ public class BilliardsModule : UdonSharpBehaviour
         }
         else
         {
-            canPlayLocal = false;
+            game.table.canPlayLocal = false;
             disablePlayComponents();
         }
     }
@@ -1154,7 +1115,7 @@ public class BilliardsModule : UdonSharpBehaviour
                     if (dstId != firstHit)
                     {
                         secondHit = dstId;
-                        handle4BallHit(ballsP[dstId], true);
+                        handle4BallHit(game.table.balls.ballsP[dstId], true);
                     }
                     break;
                 }
@@ -1163,7 +1124,7 @@ public class BilliardsModule : UdonSharpBehaviour
                     if (dstId != firstHit && dstId != secondHit)
                     {
                         thirdHit = dstId;
-                        handle4BallHit(ballsP[dstId], true);
+                        handle4BallHit(game.table.balls.ballsP[dstId], true);
                     }
                     break;
                 }
@@ -1171,7 +1132,7 @@ public class BilliardsModule : UdonSharpBehaviour
             case 3:
                 if (dstId == 13)
                 {
-                    handle4BallHit(ballsP[dstId], false);
+                    handle4BallHit(game.table.balls.ballsP[dstId], false);
                     break;
                 }
                 if (firstHit == 0)
@@ -1184,7 +1145,7 @@ public class BilliardsModule : UdonSharpBehaviour
                     if (dstId != firstHit)
                     {
                         secondHit = dstId;
-                        handle4BallHit(ballsP[dstId], true);
+                        handle4BallHit(game.table.balls.ballsP[dstId], true);
                     }
                     break;
                 }
@@ -1203,30 +1164,30 @@ public class BilliardsModule : UdonSharpBehaviour
         uint total = 0U;
 
         // Get total for X positioning
-        int count_extent = is9Ball ? 10 : (isSnooker6Red ? 13: 16);
+        int count_extent = game.table.is9Ball ? 10 : (game.table.isSnooker6Red ? 13: 16);
         for (int i = 1; i < count_extent; i++)
         {
-            total += (ballsPocketedLocal >> i) & 0x1U;
+            total += (game.table.balls.ballsPocketedLocal >> i) & 0x1U;
         }
 
         // place ball on the rack
-        ballsP[id] = k_rack_position + (float)total * k_BALL_DIAMETRE * k_rack_direction;
+        game.table.balls.ballsP[id] = k_rack_position + (float)total * k_BALL_DIAMETRE * k_rack_direction;
 
-        ballsPocketedLocal ^= 1U << id;
+        game.table.balls.ballsPocketedLocal ^= 1U << id;
 
         uint bmask = 0x1FCU << ((int)(teamIdLocal ^ teamColorLocal) * 7);
 
 
-        if (isSnooker6Red)
+        if (game.table.isSnooker6Red)
         {
             bool foulCondition = false;
-            int pocketedBallTypes = sixRedCheckBallTypesPocketed(ballsPocketedOrig, ballsPocketedLocal),
-                nextColor = sixRedFindLowestUnpocketedColor(ballsPocketedLocal);
-            bmask = colorTurnLocal ? (!redsOnTable ? (uint)(1 << break_order_sixredsnooker[nextColor]) : 0x1AE) : (!redsOnTable ? (uint)(1 << break_order_sixredsnooker[nextColor]) : 0x1E50u);
-            foulCondition = ((redsOnTable && pocketedBallTypes == 0 && colorTurnLocal) ||
-                (redsOnTable && pocketedBallTypes > 0 && !colorTurnLocal) ||
-                (!redsOnTable && firstHit != break_order_sixredsnooker[nextColor]) ||
-                (!redsOnTable && (ballsPocketedOrig & 0x1AE) < (ballsPocketedLocal & (0x1AE - bmask))));
+            int pocketedBallTypes = sixRedCheckBallTypesPocketed(),
+                nextColor = sixRedFindLowestUnpocketedColor(game.table.balls.ballsPocketedLocal);
+            bmask = game.table.colorTurnLocal ? (!game.table.rule6Reds.redsOnTable ? (uint)(1 << game.table.rule6Reds.ballOrder[nextColor]) : 0x1AE) : (!game.table.rule6Reds.redsOnTable ? (uint)(1 << game.table.rule6Reds.ballOrder[nextColor]) : 0x1E50u);
+            foulCondition = ((game.table.rule6Reds.redsOnTable && pocketedBallTypes == 0 && game.table.colorTurnLocal) ||
+                (game.table.rule6Reds.redsOnTable && pocketedBallTypes > 0 && !game.table.colorTurnLocal) ||
+                (!game.table.rule6Reds.redsOnTable && firstHit != game.table.rule6Reds.ballOrder[nextColor]) ||
+                (!game.table.rule6Reds.redsOnTable && (game.table.balls.ballsPocketedOrig & 0x1AE) < (game.table.balls.ballsPocketedLocal & (0x1AE - bmask))));
             if (!foulCondition)
                 managers.graphicsManager._FlashTableLight();
             else
@@ -1234,7 +1195,7 @@ public class BilliardsModule : UdonSharpBehaviour
         }
         else
         {
-            if (((0x1U << id) & ((bmask) | (isTableOpenLocal ? 0xFFFCU : 0x0000U) | ((bmask & ballsPocketedLocal) == bmask ? 0x2U : 0x0U))) > 0)
+            if (((0x1U << id) & ((bmask) | (game.table.isTableOpenLocal ? 0xFFFCU : 0x0000U) | ((bmask & game.table.balls.ballsPocketedLocal) == bmask ? 0x2U : 0x0U))) > 0)
             {
                 managers.graphicsManager._FlashTableLight();
             }
@@ -1243,21 +1204,21 @@ public class BilliardsModule : UdonSharpBehaviour
                 managers.graphicsManager._FlashTableError();
             }
         }
-        aud_main.PlayOneShot(snd_Sink, 1.0f);
+        aud_main.PlayOneShot(audio.snd_Sink, 1.0f);
 
 #if !HT_QUEST
 
         // VFX ( make ball move )
-        Rigidbody body = balls[id].GetComponent<Rigidbody>();
+        Rigidbody body = game.table.balls.balls[id].GetComponent<Rigidbody>();
         body.isKinematic = false;
         body.velocity = this.transform.TransformVector(new Vector3(
-           ballsV[id].x,
+           game.table.balls.ballsV[id].x,
            0.0f,
-           ballsV[id].z
+           game.table.balls.ballsV[id].z
         ));
 
 #else
-        balls[id].transform.localPosition = ballsP[id];
+        game.table.balls.balls[id].transform.localPosition = game.table.balls.ballsP[id];
 #endif
     }
 
@@ -1265,8 +1226,8 @@ public class BilliardsModule : UdonSharpBehaviour
     // TODO: verify, it's way too complicated for maintenace
     public void _TriggerSimulationEnded(bool forceScratch)
     {
-        if (!isLocalSimulationRunning) return;
-        isLocalSimulationRunning = false;
+        if (!game.isLocalSimulationRunning) return;
+        game.isLocalSimulationRunning = false;
 
         logger._LogInfo("local simulation completed");
         managers.cameraManager._OnLocalSimEnd();
@@ -1281,18 +1242,18 @@ public class BilliardsModule : UdonSharpBehaviour
             uint emask = 0x0u;
 
             // Quash down the mask if table has closed
-            if (!isTableOpenLocal)
+            if (!game.table.isTableOpenLocal)
             {
                 bmask = bmask & (0x1FCu << ((int)(teamIdLocal ^ teamColorLocal) * 7));
                 emask = 0x1FCu << ((int)(teamIdLocal ^ teamColorLocal ^ 0x1U) * 7);
             }
 
             // Common informations
-            bool isSetComplete = (ballsPocketedLocal & bmask) == bmask;
-            bool isScratch = (ballsPocketedLocal & 0x1U) == 0x1U || forceScratch;
+            bool isSetComplete = (game.table.balls.ballsPocketedLocal & bmask) == bmask;
+            bool isScratch = (game.table.balls.ballsPocketedLocal & 0x1U) == 0x1U || forceScratch;
 
-            ballsPocketedLocal = ballsPocketedLocal & ~(0x1U);
-            if (isScratch) ballsP[0] = Vector3.zero;
+            game.table.balls.ballsPocketedLocal = game.table.balls.ballsPocketedLocal & ~(0x1U);
+            if (isScratch) game.table.balls.ballsP[0] = Vector3.zero;
             // Append black to mask if set is done
             if (isSetComplete)
             {
@@ -1308,21 +1269,21 @@ public class BilliardsModule : UdonSharpBehaviour
                foulCondition,
                deferLossCondition;
 
-            if (is8Ball)
+            if (game.table.is8Ball)
             {
-                isObjectiveSink = (ballsPocketedLocal & bmask) > (ballsPocketedOrig & bmask);
-                isOpponentSink = (ballsPocketedLocal & emask) > (ballsPocketedOrig & emask);
+                isObjectiveSink = (game.table.balls.ballsPocketedLocal & bmask) > (game.table.balls.ballsPocketedOrig & bmask);
+                isOpponentSink = (game.table.balls.ballsPocketedLocal & emask) > (game.table.balls.ballsPocketedOrig & emask);
 
                 // Calculate if objective was not hit first
                 bool isWrongHit = ((0x1U << firstHit) & bmask) == 0;
-                bool is8Sink = (ballsPocketedLocal & 0x2U) == 0x2U;
+                bool is8Sink = (game.table.balls.ballsPocketedLocal & 0x2U) == 0x2U;
 
-                if (is8Sink && isPracticeMode)
+                if (is8Sink && game.table.isPracticeMode)
                 {
                     is8Sink = false;
 
-                    ballsPocketedLocal = ballsPocketedLocal & ~(0x2U);
-                    ballsP[1] = Vector3.zero;
+                    game.table.balls.ballsPocketedLocal = game.table.balls.ballsPocketedLocal & ~(0x2U);
+                    game.table.balls.ballsP[1] = Vector3.zero;
                 }
 
                 winCondition = isSetComplete && is8Sink;
@@ -1330,20 +1291,20 @@ public class BilliardsModule : UdonSharpBehaviour
 
                 deferLossCondition = is8Sink;
             }
-            else if (is9Ball)
+            else if (game.table.is9Ball)
             {
                 // Rules are from: https://www.youtube.com/watch?v=U0SbHOXCtFw
 
                 // Rule #1: Cueball must strike the lowest number ball, first
-                bool isWrongHit = !(findLowestUnpocketedBall(ballsPocketedOrig) == firstHit);
+                bool isWrongHit = !(findLowestUnpocketedBall(game.table.balls.ballsPocketedOrig) == firstHit);
 
                 // Rule #2: Pocketing cueball, is a foul
 
                 // Win condition: Pocket 9 ball ( at anytime )
-                winCondition = (ballsPocketedLocal & 0x200u) == 0x200u;
+                winCondition = (game.table.balls.ballsPocketedLocal & 0x200u) == 0x200u;
 
                 // this video is hard to follow so im just gonna guess this is right
-                isObjectiveSink = (ballsPocketedLocal & 0x3FEu) > (ballsPocketedOrig & 0x3FEu);
+                isObjectiveSink = (game.table.balls.ballsPocketedLocal & 0x3FEu) > (game.table.balls.ballsPocketedOrig & 0x3FEu);
 
                 isOpponentSink = false;
                 deferLossCondition = false;
@@ -1352,63 +1313,63 @@ public class BilliardsModule : UdonSharpBehaviour
 
                 // TODO: Implement rail contact requirement
             }
-            else if (is4Ball)
+            else if (game.table.is4Ball)
             {
                 isObjectiveSink = fbMadePoint;
                 isOpponentSink = fbMadeFoul;
                 foulCondition = false;
                 deferLossCondition = false;
 
-                winCondition = fbScoresLocal[teamIdLocal] >= 10;
+                winCondition = game.table.rule4Ball.scoresLocal[teamIdLocal] >= 10;
             }
             else /* if (isSnooker) */
             {
-                redsOnTable = sixRedCheckIfRedOnTable(ballsPocketedOrig);
+                game.table.rule6Reds.redsOnTable = sixRedCheckIfRedOnTable(game.table.balls.ballsPocketedOrig);
 
-                bool redOnTableOrColorTurn = redsOnTable || colorTurnLocal,
-                     allBallsPocketed = ((ballsPocketedLocal & 0x1FFEu) == 0x1FFEu),
+                bool redOnTableOrColorTurn = game.table.rule6Reds.redsOnTable || game.table.colorTurnLocal,
+                     allBallsPocketed = ((game.table.balls.ballsPocketedLocal & 0x1FFEu) == 0x1FFEu),
                      myTeamWinning;
 
                 int numBallsPocketed = 0,
                     ballScore = 0,
                     highestPocketedBallScore = 0,
-                    nextColor = sixRedFindLowestUnpocketedColor(ballsPocketedOrig);
+                    nextColor = sixRedFindLowestUnpocketedColor(game.table.balls.ballsPocketedOrig);
 
-                uint objective = colorTurnLocal ? 0x1AE : (redsOnTable ? 0x1E50u : (uint)(1 << break_order_sixredsnooker[nextColor]));
+                uint objective = game.table.colorTurnLocal ? 0x1AE : (game.table.rule6Reds.redsOnTable ? 0x1E50u : (uint)(1 << game.table.rule6Reds.ballOrder[nextColor]));
 
                 isOpponentSink = false;
 
-                isObjectiveSink = (ballsPocketedLocal & (objective)) > (ballsPocketedOrig & (objective));
+                isObjectiveSink = (game.table.balls.ballsPocketedLocal & (objective)) > (game.table.balls.ballsPocketedOrig & (objective));
 
                 sixRedScoreBallsPocketed(ref ballScore, ref numBallsPocketed, ref highestPocketedBallScore);
 
                 foulCondition = isSixRedFoul(objective, isScratch, nextColor);
 
-                bool isMyScoreValid = fbScoresLocal[teamIdLocal] <= 200;
-                bool isEnemyScoreValid = fbScoresLocal[1 - teamIdLocal] <= 200;
+                bool isMyScoreValid = game.table.rule4Ball.scoresLocal[teamIdLocal] <= 200;
+                bool isEnemyScoreValid = game.table.rule4Ball.scoresLocal[1 - teamIdLocal] <= 200;
                 if (foulCondition)
-                    fbScoresLocal[1 - teamIdLocal] += isEnemyScoreValid ? Math.Max(ballScore, 4) : 0;
+                    game.table.rule4Ball.scoresLocal[1 - teamIdLocal] += isEnemyScoreValid ? Math.Max(ballScore, 4) : 0;
                 else
-                    fbScoresLocal[teamIdLocal] += isMyScoreValid ? ballScore : 0;
+                    game.table.rule4Ball.scoresLocal[teamIdLocal] += isMyScoreValid ? ballScore : 0;
 
                 if (redOnTableOrColorTurn || foulCondition)
                     sixRedReturnColoredBalls(foulCondition ? nextColor : 6);
 
                 if (isScratch)
-                    ballsP[0] = initialPositions[4][0];
+                    game.table.balls.ballsP[0] = initialPositions[4][0];
 
-                colorTurnLocal = (redsOnTable && isObjectiveSink && !foulCondition) ? !colorTurnLocal : false;
-                redsOnTable = sixRedCheckIfRedOnTable(ballsPocketedLocal);
+                game.table.colorTurnLocal = (game.table.rule6Reds.redsOnTable && isObjectiveSink && !foulCondition) ? !game.table.colorTurnLocal : false;
+                game.table.rule6Reds.redsOnTable = sixRedCheckIfRedOnTable(game.table.balls.ballsPocketedLocal);
 
-                myTeamWinning = fbScoresLocal[teamIdLocal] > fbScoresLocal[1 - teamIdLocal];
+                myTeamWinning = game.table.rule4Ball.scoresLocal[teamIdLocal] > game.table.rule4Ball.scoresLocal[1 - teamIdLocal];
 
                 winCondition = myTeamWinning && allBallsPocketed;
                 if (winCondition) foulCondition = false;
                 deferLossCondition = allBallsPocketed && !myTeamWinning;
 
-                logger._LogInfo($"6RED: TeamScore 0: {fbScoresLocal[0]}\n6RED: TeamScore 1: {fbScoresLocal[1]}");
+                logger._LogInfo($"6RED: TeamScore 0: {game.table.rule4Ball.scoresLocal[0]}\n6RED: TeamScore 1: {game.table.rule4Ball.scoresLocal[1]}");
             }
-            managers.networkingManager._OnSimulationEnded(ballsP, ballsPocketedLocal, fbScoresLocal, colorTurnLocal, redsOnTable);
+            managers.networkingManager._OnSimulationEnded(game.table.balls.ballsP, game.table.balls.ballsPocketedLocal, game.table.rule4Ball.scoresLocal, game.table.colorTurnLocal, game.table.rule6Reds.redsOnTable);
 
             if (winCondition)
             {
@@ -1452,14 +1413,14 @@ public class BilliardsModule : UdonSharpBehaviour
     private bool isSixRedFoul(uint objective, bool isScratch, int nextColor)
     {
         int firsthittype = sixRedCheckFirstHit(firstHit),
-            pocketedBallTypes = sixRedCheckBallTypesPocketed(ballsPocketedOrig, ballsPocketedLocal);
+            pocketedBallTypes = sixRedCheckBallTypesPocketed();
 
-        return (redsOnTable && firsthittype == 0 && colorTurnLocal) ||
-                (redsOnTable && firsthittype == 1 && !colorTurnLocal) ||
-                (redsOnTable && pocketedBallTypes == 0 && colorTurnLocal) ||
-                (redsOnTable && pocketedBallTypes > 0 && !colorTurnLocal) ||
-                (!redsOnTable && firstHit != break_order_sixredsnooker[nextColor] && !colorTurnLocal) ||
-                (!redsOnTable && (ballsPocketedOrig & 0x1AE) < (ballsPocketedLocal & (0x1AE - objective)) && !colorTurnLocal) ||
+        return (game.table.rule6Reds.redsOnTable && firsthittype == 0 && game.table.colorTurnLocal) ||
+                (game.table.rule6Reds.redsOnTable && firsthittype == 1 && !game.table.colorTurnLocal) ||
+                (game.table.rule6Reds.redsOnTable && pocketedBallTypes == 0 && game.table.colorTurnLocal) ||
+                (game.table.rule6Reds.redsOnTable && pocketedBallTypes > 0 && !game.table.colorTurnLocal) ||
+                (!game.table.rule6Reds.redsOnTable && firstHit != game.table.rule6Reds.ballOrder[nextColor] && !game.table.colorTurnLocal) ||
+                (!game.table.rule6Reds.redsOnTable && (game.table.balls.ballsPocketedOrig & 0x1AE) < (game.table.balls.ballsPocketedLocal & (0x1AE - objective)) && !game.table.colorTurnLocal) ||
                 (firsthittype == -1) ||
                 (isScratch);
     }
@@ -1481,9 +1442,9 @@ public class BilliardsModule : UdonSharpBehaviour
     // RuleManager
     public int sixRedFindLowestUnpocketedColor(uint field)
     {
-        for (int i = 6; i < break_order_sixredsnooker.Length; i++)
+        for (int i = 6; i < game.table.rule6Reds.ballOrder.Length; i++)
         {
-            bool isLowestUnpocketed = ((field >> break_order_sixredsnooker[i]) & 0x1U) == 0x00U;
+            bool isLowestUnpocketed = ((field >> game.table.rule6Reds.ballOrder[i]) & 0x1U) == 0x00U;
             if (isLowestUnpocketed)
                 return i;
         }
@@ -1493,7 +1454,7 @@ public class BilliardsModule : UdonSharpBehaviour
     public bool sixRedCheckIfRedOnTable(uint field)
     {
         for (int i = 0; i < 6; i++)
-            if (((field >> break_order_sixredsnooker[i]) & 0x1U) == 0x00U)
+            if (((field >> game.table.rule6Reds.ballOrder[i]) & 0x1U) == 0x00U)
                 return true;
         return false;
     }
@@ -1510,15 +1471,15 @@ public class BilliardsModule : UdonSharpBehaviour
     // RuleManager
     public void sixRedReturnColoredBalls(int from)
     {
-        for (int i = from; i < break_order_sixredsnooker.Length; i++)
+        for (int i = from; i < game.table.rule6Reds.ballOrder.Length; i++)
         {
-            bool isBallInBreakOrder = (ballsPocketedLocal & (1 << break_order_sixredsnooker[i])) > 0;
+            bool isBallInBreakOrder = (game.table.balls.ballsPocketedLocal & (1 << game.table.rule6Reds.ballOrder[i])) > 0;
 
             if (!isBallInBreakOrder)
                 continue;
 
-            sixRedMoveBallUntilNotTouching(break_order_sixredsnooker[i]);
-            ballsPocketedLocal = ballsPocketedLocal ^ (1u << break_order_sixredsnooker[i]);
+            sixRedMoveBallUntilNotTouching(game.table.rule6Reds.ballOrder[i]);
+            game.table.balls.ballsPocketedLocal = game.table.balls.ballsPocketedLocal ^ (1u << game.table.rule6Reds.ballOrder[i]);
         }
     }
     // RuleManager
@@ -1526,23 +1487,23 @@ public class BilliardsModule : UdonSharpBehaviour
     {
         for (int i = 1; i < 13; i++)
         {
-            bool isBallPocketted = (ballsPocketedLocal & (1 << i)) > (ballsPocketedOrig & (1 << i));
+            bool isBallPocketted =  (game.table.balls.ballsPocketedLocal & (1 << i)) > (game.table.balls.ballsPocketedOrig & (1 << i));
 
             if (!isBallPocketted)
                 continue;
 
-            if (highestScoringBall < sixredsnooker_ballpoints[i])
-                highestScoringBall = sixredsnooker_ballpoints[i];
+            if (highestScoringBall < game.table.rule6Reds.ballPoints[i])
+                highestScoringBall = game.table.rule6Reds.ballPoints[i];
 
-            ballScore += sixredsnooker_ballpoints[i];
+            ballScore += game.table.rule6Reds.ballPoints[i];
             numBallsPocketed++;
         }
     }
     // RuleManager/BallManager
-    public int sixRedCheckBallTypesPocketed(uint ballsPocketedOrig, uint ballsPocketedLocal)
+    public int sixRedCheckBallTypesPocketed()
     {
-        bool redBallPocket = (ballsPocketedOrig & 0x1E50u) < (ballsPocketedLocal & 0x1E50u);
-        bool coloredBallPocket = (ballsPocketedOrig & 0x1AE) < (ballsPocketedLocal & 0x1AE);
+        bool redBallPocket = (game.table.balls.ballsPocketedOrig & 0x1E50u) <  (game.table.balls.ballsPocketedLocal & 0x1E50u);
+        bool coloredBallPocket = (game.table.balls.ballsPocketedOrig & 0x1AE) <  (game.table.balls.ballsPocketedLocal & 0x1AE);
         bool bothPocket = (coloredBallPocket && redBallPocket);
 
         return bothPocket ? 2 : (coloredBallPocket ? 1 : (redBallPocket ? 0 : -1));
@@ -1550,20 +1511,20 @@ public class BilliardsModule : UdonSharpBehaviour
     // RuleManager/BallManager
     private void sixRedMoveBallUntilNotTouching(int Ball)
     {
-        ballsP[Ball] = initialPositions[4][Ball];
+        game.table.balls.ballsP[Ball] = initialPositions[4][Ball];
         int blockingBall = CheckIfBallTouchingBall(Ball);
         if (CheckIfBallTouchingBall(Ball) < 0)
             return;
 
-        for (int i = break_order_sixredsnooker.Length - 1; i > 5; i--)
+        for (int i = game.table.rule6Reds.ballOrder.Length - 1; i > 5; i--)
         {
-            ballsP[Ball] = initialPositions[4][break_order_sixredsnooker[i]];
+            game.table.balls.ballsP[Ball] = initialPositions[4][game.table.rule6Reds.ballOrder[i]];
             if (CheckIfBallTouchingBall(Ball) < 0)
                 return;
         }
 
-        ballsP[Ball] = initialPositions[4][Ball];
-        Vector3 moveDir = ballsP[Ball] - ballsP[blockingBall];
+        game.table.balls.ballsP[Ball] = initialPositions[4][Ball];
+        Vector3 moveDir = game.table.balls.ballsP[Ball] - game.table.balls.ballsP[blockingBall];
         moveDir.y = 0;
         if (moveDir.sqrMagnitude == 0)
             moveDir = Vector3.left;
@@ -1575,7 +1536,7 @@ public class BilliardsModule : UdonSharpBehaviour
     private void moveBallInDirUntilNotTouching(int Ball, Vector3 Dir)
     {
         while (CheckIfBallTouchingBall(Ball) > 0)
-            ballsP[Ball] += Dir;
+            game.table.balls.ballsP[Ball] += Dir;
     }
     // BallManager
     private int CheckIfBallTouchingBall(int Input)
@@ -1586,11 +1547,11 @@ public class BilliardsModule : UdonSharpBehaviour
         float k_BALL_DSQR = ballDiameter * ballDiameter;
         for (int i = 1; i < 16; i++)
         {
-            isNotCorrectBall = ((ballsPocketedLocal >> i) & 0x1u) == 0x1u || i == Input;
+            isNotCorrectBall = ( (game.table.balls.ballsPocketedLocal >> i) & 0x1u) == 0x1u || i == Input;
             if (isNotCorrectBall)
                 continue;
 
-            isBallTouching = (ballsP[Input] - ballsP[i]).sqrMagnitude < k_BALL_DSQR;
+            isBallTouching = (game.table.balls.ballsP[Input] - game.table.balls.ballsP[i]).sqrMagnitude < k_BALL_DSQR;
             if (isBallTouching)
                 return i;
         }
@@ -1649,7 +1610,7 @@ public class BilliardsModule : UdonSharpBehaviour
     {
         // 8 ball
         initialBallsPocketed[0] = 0x00u;
-        makeTriangle(k_SPOT_POSITION_X, 0, break_order_8ball, 5);
+        makeTriangle(k_SPOT_POSITION_X, 0, game.table.rule8Ball.ballOrder, 5);
     }
 
     // TableManager/RuleManager?
@@ -1660,10 +1621,10 @@ public class BilliardsModule : UdonSharpBehaviour
         int rown;
         for (int i = 0, k = 0; i < 5; i++)
         {
-            rown = break_rows_9ball[i];
+            rown = game.table.rule9Ball.breakRows[i];
             for (int j = 0; j <= rown; j++)
             {
-                initialPositions[1][break_order_9ball[k++]] = new Vector3
+                initialPositions[1][game.table.rule9Ball.ballOrder[k++]] = new Vector3
                 (
                    k_SPOT_POSITION_X + i * k_BALL_PL_Y + UnityEngine.Random.Range(-k_RANDOMIZE_F, k_RANDOMIZE_F),
                    0.0f,
@@ -1679,15 +1640,15 @@ public class BilliardsModule : UdonSharpBehaviour
         // Snooker
         initialBallsPocketed[4] = 0xE000u;
 
-        initialPositions[4][1] = new Vector3(coloredPositions[0].localPosition.x, 0f, 0f);//black
-        initialPositions[4][5] = new Vector3(coloredPositions[1].localPosition.x, 0f, 0f);//pink
-        initialPositions[4][2] = new Vector3(coloredPositions[2].localPosition.x, 0f, coloredPositions[2].localPosition.z);//yellow
-        initialPositions[4][7] = new Vector3(coloredPositions[3].localPosition.x, 0f, coloredPositions[3].localPosition.z);//green  
-        initialPositions[4][8] = new Vector3(coloredPositions[4].localPosition.x, 0f, 0f);//brown
-        initialPositions[4][0] = new Vector3(coloredPositions[5].localPosition.x, 0f, coloredPositions[5].localPosition.z); //cue
+        initialPositions[4][1] = game.table.balls.getSnookerPositionV3(SnookerPositionE.BLACK);
+        initialPositions[4][5] = game.table.balls.getSnookerPositionV3(SnookerPositionE.PINK);
+        initialPositions[4][2] = game.table.balls.getSnookerPositionV3(SnookerPositionE.YELLOW);
+        initialPositions[4][7] = game.table.balls.getSnookerPositionV3(SnookerPositionE.GREEN);
+        initialPositions[4][8] = game.table.balls.getSnookerPositionV3(SnookerPositionE.BROWN);
+        initialPositions[4][0] = game.table.balls.getSnookerPositionV3(SnookerPositionE.CUE);
                                                                                                                             //triangle
-        float rackStartSnooker = coloredPositions[6].localPosition.x;
-        makeTriangle(rackStartSnooker, 4, break_order_sixredsnooker, 3);
+        float rackStartSnooker = game.table.balls.getSnookerPositionV3(SnookerPositionE.CUE).x;
+        makeTriangle(rackStartSnooker, 4, game.table.rule6Reds.ballOrder, 3);
     }
 
     // TableManager/RuleManager?
@@ -1794,10 +1755,10 @@ public class BilliardsModule : UdonSharpBehaviour
     private void handle4BallHitGood(Vector3 p)
     {
         fbMadePoint = true;
-        aud_main.PlayOneShot(snd_PointMade, 1.0f);
+        aud_main.PlayOneShot(audio.snd_PointMade, 1.0f);
 
-        fbScoresLocal[teamIdLocal]++;
-        if (fbScoresLocal[teamIdLocal] > 10) fbScoresLocal[teamIdLocal] = 10;
+        game.table.rule4Ball.scoresLocal[teamIdLocal]++;
+        if (game.table.rule4Ball.scoresLocal[teamIdLocal] > 10) game.table.rule4Ball.scoresLocal[teamIdLocal] = 10;
     }
 
     // TableModule/RulesModule?
@@ -1806,8 +1767,8 @@ public class BilliardsModule : UdonSharpBehaviour
         if (fbMadeFoul) return;
         fbMadeFoul = true;
 
-        fbScoresLocal[teamIdLocal]--;
-        if (fbScoresLocal[teamIdLocal] < 0) fbScoresLocal[teamIdLocal] = 0;
+        game.table.rule4Ball.scoresLocal[teamIdLocal]--;
+        if (game.table.rule4Ball.scoresLocal[teamIdLocal] < 0) game.table.rule4Ball.scoresLocal[teamIdLocal] = 0;
     }
 
     // TableModule?
@@ -1843,11 +1804,11 @@ public class BilliardsModule : UdonSharpBehaviour
         logger._LogInfo($"onLocalTurnContinue");
 
         // try and close the table if possible
-        if (is8Ball && isTableOpenLocal)
+        if (game.table.is8Ball && game.table.isTableOpenLocal)
         {
             uint sink_orange = 0;
             uint sink_blue = 0;
-            uint pmask = ballsPocketedLocal >> 2;
+            uint pmask = game.table.balls.ballsPocketedLocal >> 2;
 
             for (int i = 0; i < 7; i++)
             {
@@ -1877,7 +1838,7 @@ public class BilliardsModule : UdonSharpBehaviour
     // TODO: verify TableModule?
     private void onLocalTimerEnd()
     {
-        timerRunning = false;
+        game.table.timerRunning = false;
 
         logger._LogWarn("out of time!");
 
@@ -1886,7 +1847,7 @@ public class BilliardsModule : UdonSharpBehaviour
         if (!playerManager.IsLocalPlayerReferee())
         {
             // no one is allowed to play
-            canPlayLocal = false;
+            game.table.canPlayLocal = false;
 
             if (playerManager.isOurTurn())
             {
@@ -1922,16 +1883,16 @@ public class BilliardsModule : UdonSharpBehaviour
     {
         bool isOurTurnVar = playerManager.isOurTurn();
 
-        if ((isOurTurnVar && isPracticeMode) || playerManager.IsLocalPlayerReferee())
+        if ((isOurTurnVar && game.table.isPracticeMode) || playerManager.IsLocalPlayerReferee())
         {
             this.transform.Find("intl.controls/undo").gameObject.SetActive(true);
             this.transform.Find("intl.controls/redo").gameObject.SetActive(true);
             this.transform.Find("intl.controls/skipturn").gameObject.SetActive(true);
         }
 
-        if (is9Ball)
+        if (game.table.is9Ball)
         {
-            marker9ball.SetActive(true);
+            game.table.balls.marker9ball.SetActive(true);
             _Update9BallMarker();
         }
 
@@ -1949,7 +1910,7 @@ public class BilliardsModule : UdonSharpBehaviour
 
         if (timerLocal > 0)
         {
-            timerRunning = true;
+            game.table.timerRunning = true;
             managers.graphicsManager._ShowTimers();
         }
     }
@@ -1957,7 +1918,7 @@ public class BilliardsModule : UdonSharpBehaviour
     // TableManager?
     public void _SkipTurn()
     {
-        if (isPracticeMode || playerManager.IsLocalPlayerReferee())
+        if (game.table.isPracticeMode || playerManager.IsLocalPlayerReferee())
         {
             onLocalTurnFoul();
         }
@@ -1966,10 +1927,10 @@ public class BilliardsModule : UdonSharpBehaviour
     // BallManager?
     public void _Update9BallMarker()
     {
-        if (marker9ball.activeSelf)
+        if (game.table.balls.marker9ball.activeSelf)
         {
-            int target = findLowestUnpocketedBall(ballsPocketedLocal);
-            marker9ball.transform.localPosition = ballsP[target];
+            int target = findLowestUnpocketedBall (game.table.balls.ballsPocketedLocal);
+            game.table.balls.marker9ball.transform.localPosition = game.table.balls.ballsP[target];
         }
     }
 
@@ -1977,13 +1938,13 @@ public class BilliardsModule : UdonSharpBehaviour
     // turn off any game elements that are enabled when someone is taking a shot
     private void disablePlayComponents()
     {
-        marker9ball.SetActive(false);
+        game.table.balls.marker9ball.SetActive(false);
         setFoulPickupEnabled(false);
         refreshBallPickups();
-        devhit.SetActive(false);
-        guideline.SetActive(false);
-        isGuidelineValid = false;
-        isReposition = false;
+        game.table.cues.devhit.SetActive(false);
+        game.table.cues.guideline.SetActive(false);
+        game.table.common.isGuidelineValid = false;
+        game.table.isReposition = false;
 
         managers.desktopManager._DenyShoot();
         managers.graphicsManager._HideTimers();
@@ -2014,7 +1975,7 @@ public class BilliardsModule : UdonSharpBehaviour
     // TableManager?
     private void setBallPickupActive(int ballId, bool active)
     {
-        Transform pickup = balls[ballId].transform.GetChild(0);
+        Transform pickup =  game.table.balls.balls[ballId].transform.GetChild(0);
 
         pickup.gameObject.SetActive(active);
         pickup.GetComponent<SphereCollider>().enabled = active;
@@ -2028,9 +1989,9 @@ public class BilliardsModule : UdonSharpBehaviour
         bool canUsePickup = playerManager.IsPickupAllowed();
 
         uint ball_bit = 0x1u;
-        for (int i = 0; i < balls.Length; i++)
+        for (int i = 0; i < game.table.balls.balls.Length; i++)
         {
-            if (gameLive && (canUsePickup || (i == 0 && isReposition)) && canPlayLocal && (ballsPocketedLocal & ball_bit) == 0x0u)
+            if (game.gameLive && (canUsePickup || (i == 0 && game.table.isReposition)) && game.table.canPlayLocal &&  (game.table.balls.ballsPocketedLocal & ball_bit) == 0x0u)
             {
                 setBallPickupActive(i, true);
             }
@@ -2045,12 +2006,12 @@ public class BilliardsModule : UdonSharpBehaviour
     // TableManager?
     private void setFoulPickupEnabled(bool enabled)
     {
-        markerObj.SetActive(enabled);
+        game.table.balls.markerObj.SetActive(enabled);
         if (enabled)
         {
             setBallPickupActive(0, true);
         }
-        else if (!isPracticeMode && !playerManager.IsLocalPlayerReferee())
+        else if (!game.table.isPracticeMode && !playerManager.IsLocalPlayerReferee())
         {
             setBallPickupActive(0, false);
         }
@@ -2059,7 +2020,7 @@ public class BilliardsModule : UdonSharpBehaviour
     // TableManager?
     private void tickTimer()
     {
-        if (gameLive && timerRunning && canPlayLocal)
+        if (game.gameLive && game.table.timerRunning && game.table.canPlayLocal)
         {
             float timeRemaining = timerLocal - (Networking.GetServerTimeInMilliseconds() - timerStartLocal) / 1000.0f;
             float timePercentage = timeRemaining >= 0.0f ? 1.0f - (timeRemaining / timerLocal) : 0.0f;
@@ -2099,7 +2060,7 @@ public class BilliardsModule : UdonSharpBehaviour
             if (!playerManager._IsPlayer(Networking.LocalPlayer)) return;
 
             // no loading outside of practice
-            if (!isPracticeMode) return;
+            if (!game.table.isPracticeMode) return;
         }
         else
         {
@@ -2115,21 +2076,21 @@ public class BilliardsModule : UdonSharpBehaviour
     // This looks to be Pratice mode related. To redo. Make it clear what and how it works
     public object[] _SerializeInMemoryState()
     {
-        Vector3[] positionClone = new Vector3[ballsP.Length];
-        Array.Copy(ballsP, positionClone, ballsP.Length);
-        int[] scoresClone = new int[fbScoresLocal.Length];
-        Array.Copy(fbScoresLocal, scoresClone, fbScoresLocal.Length);
+        Vector3[] positionClone = new Vector3[game.table.balls.ballsP.Length];
+        Array.Copy(game.table.balls.ballsP, positionClone, game.table.balls.ballsP.Length);
+        int[] scoresClone = new int[game.table.rule4Ball.scoresLocal.Length];
+        Array.Copy(game.table.rule4Ball.scoresLocal, scoresClone, game.table.rule4Ball.scoresLocal.Length);
         return new object[15]
         {
             positionClone,
-            ballsPocketedLocal,
+            game.table.balls.ballsPocketedLocal,
             scoresClone,
             gameModeLocal,
             teamIdLocal,
             repositionStateLocal,
-            isTableOpenLocal,
+            game.table.isTableOpenLocal,
             teamColorLocal,
-            fourBallCueBallLocal,
+            game.table.balls.fourBallCueBallLocal,
             turnStateLocal,
             managers.networkingManager.cueBallVSynced,
             managers.networkingManager.cueBallWSynced,
@@ -2166,11 +2127,11 @@ public class BilliardsModule : UdonSharpBehaviour
         // Use Equal or SequenceEqual from Array lib
         Vector3[] posA = (Vector3[])a[0];
         Vector3[] posB = (Vector3[])b[0];
-        for (int i = 0; i < ballsP.Length; i++) if (posA[i] != posB[i]) return false;
+        for (int i = 0; i < game.table.balls.ballsP.Length; i++) if (posA[i] != posB[i]) return false;
 
         int[] scoresA = (int[])a[2];
         int[] scoresB = (int[])b[2];
-        for (int i = 0; i < fbScoresLocal.Length; i++) if (scoresA[i] != scoresB[i]) return false;
+        for (int i = 0; i < game.table.rule4Ball.scoresLocal.Length; i++) if (scoresA[i] != scoresB[i]) return false;
 
         for (int i = 0; i < a.Length; i++) if (i != 0 && i != 2 && !a[i].Equals(b[i])) return false;
 
