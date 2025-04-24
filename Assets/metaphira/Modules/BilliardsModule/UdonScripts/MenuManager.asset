@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c333ccfdd0cbdbc4ca30cef2dd6e6b9b, type: 3}
   m_Name: MenuManager
   m_EditorClassIdentifier: 
-  serializedUdonProgramAsset: {fileID: 11400000, guid: 965c0a853ea4528478c3962567868626,
+  serializedUdonProgramAsset: {fileID: 11400000, guid: 336423e93986a27468d1f67ccbd577ce,
     type: 2}
   udonAssembly: 
   assemblyError: 

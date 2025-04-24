@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c333ccfdd0cbdbc4ca30cef2dd6e6b9b, type: 3}
   m_Name: CueController
   m_EditorClassIdentifier: 
-  serializedUdonProgramAsset: {fileID: 11400000, guid: b481fbe270703c84d8e3cf2f9cbd305d,
+  serializedUdonProgramAsset: {fileID: 11400000, guid: 6b6c481bf7332d749b03d3bb4bec39cd,
     type: 2}
   udonAssembly: 
   assemblyError: 

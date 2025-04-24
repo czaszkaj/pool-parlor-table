@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c333ccfdd0cbdbc4ca30cef2dd6e6b9b, type: 3}
   m_Name: ButtonSkipTurn
   m_EditorClassIdentifier: 
-  serializedUdonProgramAsset: {fileID: 11400000, guid: 2c38838b2ec98a44db432c9a43c5cc78,
+  serializedUdonProgramAsset: {fileID: 11400000, guid: 17d564a4eb2169d45a73b7cbb3ae9c66,
     type: 2}
   udonAssembly: 
   assemblyError: 
