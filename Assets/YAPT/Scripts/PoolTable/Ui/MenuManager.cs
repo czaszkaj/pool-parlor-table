@@ -7,16 +7,20 @@ using VRC.Udon;
 using System;
 using YAPT.PoolTable.Table;
 using YAPT.PoolTable.Common;
+using YAPT.PoolTable.Players;
 
+// TODO
+// Add player validation for public methods, to avoid hackers
 namespace YAPT.PoolTable.Ui
 {
     [UdonBehaviourSyncMode(BehaviourSyncMode.Manual)]
     public class MenuManager : UdonSharpBehaviour
     {
         private MenuData data;
+        private PlayerManager playerManager;
 
         [Header("Game Objects")]
-        [SerializeField] private GameObject gameModule;
+        [SerializeField][HideInInspector] private GameObject gameModule; // Assighned in Start
         [SerializeField] private GameObject gameOwner;
 
         [Header("Menu Objects")]
@@ -55,41 +59,6 @@ namespace YAPT.PoolTable.Ui
         private readonly uint[] TIMER_VALUES = { 15, 30, 60, MenuData.TIMER_INF };
         private bool timerSpinPlaying;
 
-        private int localPlayerId = MenuData.INVALID_PLAYER_ID;
-        private int playerNameId = MenuData.INVALID_PLAYER_ID;
-
-        #region Testing
-        // public void TestAddPaleyr1()
-        // {
-        //     data.SetPlayer(1, "TestPlayer1", 11);
-        //     _UpdatePlayerNameObject();
-        // }
-        // public void TestAddPaleyr2()
-        // {
-        //     data.SetPlayer(2, "TestPlayer2", 12);
-        //     _UpdatePlayerNameObject();
-        // }
-        // public void TestAddPaleyr3()
-        // {
-        //     data.SetPlayer(3, "TestPlayer3", 13);
-        //     _UpdatePlayerNameObject();
-        // }
-        // public void TestRemovePlayer1()
-        // {
-        //     data.RemovePlayer("TestPlayer1");
-        //     _UpdatePlayerNameObject();
-        // }
-        // public void TestRemovePlayer2()
-        // {
-        //     data.RemovePlayer("TestPlayer2");
-        //     _UpdatePlayerNameObject();
-        // }
-        // public void TestRemovePlayer3()
-        // {
-        //     data.RemovePlayer("TestPlayer3");
-        //     _UpdatePlayerNameObject();
-        // }
-        #endregion
         #region UdonSharpBehaviour
 
         void Start()
@@ -97,6 +66,10 @@ namespace YAPT.PoolTable.Ui
             menuGame.SetActive(false);
             menuStart.SetActive(true);
             data = GetComponent<MenuData>();
+            playerManager = GetComponent<PlayerManager>();
+            // Set gameModule to the parent of gameOwner
+            // This is needed to allow name changes of the parent object (Table1, Table2, TableInDoors, etc.)
+            gameModule = gameOwner.transform.parent.gameObject;
         }
 
         // Handle animated parts of the menu
@@ -117,23 +90,23 @@ namespace YAPT.PoolTable.Ui
         public override void OnPlayerLeft(VRCPlayerApi player)
         {
             // Check if missing player is part of the game
-            if (!data.isPlayer(player.displayName)) return;
+            if (!playerManager.isPlayer(player.displayName)) return;
             VRCPlayerApi gameOwnerPlayer = Networking.GetOwner(gameOwner);
             if (gameOwnerPlayer.playerId == player.playerId)
             {
-                data.RemovePlayer(player.displayName);
+                playerManager.RemovePlayer(player.displayName);
                 Networking.SetOwner(null, gameOwner);
-                if (isCurrentPlayer())
+                if (playerManager.isPlayer(Networking.LocalPlayer.displayName))
                 {
                     RegisterOwner();
                     UpdatePlayerNameObject();
                 }
 
             }
-            else if (isCurrentPlayer())
+            else if (playerManager.isPlayer(Networking.LocalPlayer.displayName))
             {
                 // Local player
-                data.RemovePlayer(player.displayName);
+                playerManager.RemovePlayer(player.displayName);
                 UpdatePlayerNameObject();
             }
 
@@ -141,6 +114,7 @@ namespace YAPT.PoolTable.Ui
 
         public override void OnPlayerJoined(VRCPlayerApi player)
         {
+            Debug.Log($"OnPlayerJoined: name:{player.displayName}, isOwner: {Networking.IsOwner(player, gameOwner)}");
             if (player.isLocal && data.Owner != "")
             {
                 // If Owner available update menu state
@@ -185,10 +159,9 @@ namespace YAPT.PoolTable.Ui
         [NonSerialized] public UIButton inButton;
         public void _OnButtonPressed()
         {
-            // Debug.Log($"UIButton: receivedPressedEvent {inButton.name}");
+            Debug.Log($"UIButton: receivedPressedEvent {inButton.name}, isOwner: {Networking.IsOwner(gameOwner)}");
             if (inButton.name == "StartButton")
             {
-                _PressDefaultGameType();
                 RegisterOwner();
                 UpdatePlayerNameObject();
             }
@@ -213,20 +186,23 @@ namespace YAPT.PoolTable.Ui
                 //     RegisterOwner();
                 //     break;
                 case "JoinOrange":
-                    // table._TriggerJoinTeam(0);
+                    _JoinTeam0();
                     break;
                 case "JoinBlue":
-                    // table._TriggerJoinTeam(1);
+                    _JoinTeam1();
                     break;
                 case "LeaveButton":
-                    // table._TriggerLeaveLobby();
+                    _LeaveTeam();
+                    break;
+                case "TeamsToggle":
+                    // Test teams toggle
+                    _ToggleTeamsObject();
                     break;
             }
         }
 
         private void OnButtonPressedOwner(UIButton button)
         {
-            Debug.Log($"UIButton: Owner");
             switch (button.name)
             {
                 case "LeaveButton":
@@ -280,6 +256,24 @@ namespace YAPT.PoolTable.Ui
 
         #region Networking
 
+        // Sets default button during first game start
+        private void _PressDefaultGameType()
+        {
+            if (data.ActiveGameMode == (int)GameModeType.INVALID)
+            {
+                // Default game type
+                SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "PressDefaultGameType");
+                data.ActiveGameMode = (int)GameModeType.EIGHT_BALL;
+                // From this point it should be valid for all players
+            }
+        }
+
+        public void PressDefaultGameType()
+        {
+            button8Ball._SetButtonPushed();
+            button4BallKR._SetButtonPushed();
+        }
+
         private void _StartGame()
         {
             data.SyncData();
@@ -306,8 +300,8 @@ namespace YAPT.PoolTable.Ui
 
             // Set the game owner
             Networking.SetOwner(Networking.LocalPlayer, gameOwner);
+            playerManager.SetPlayerName(0, Networking.LocalPlayer.displayName);
             data.Owner = Networking.LocalPlayer.displayName;
-            data.SetPlayerName(0, Networking.LocalPlayer.displayName);
             data.SyncData();
             // Show the game menu
             menuStart.SetActive(false);
@@ -323,17 +317,19 @@ namespace YAPT.PoolTable.Ui
         /// </summary>
         public void RegisterOwnerInd()
         {
+            int playerNameId = PlayerManager.INVALID_PLAYER_ID;
             bool isOwner = Networking.IsOwner(gameOwner);
             // Check if the owner is already set and allocate player id
             if (requestedPlay && !isOwner)
             {
                 data.Owner = Networking.GetOwner(gameOwner).displayName;
                 // Shouldn't be needed, we already Sync data
-                //data.SetPlayerName(0, data.Owner);
+                //playerManager.SetPlayerName(0, data.Owner);
                 playerNameId = 1;
             }
             else if (isOwner)
             {
+                _PressDefaultGameType();
                 Networking.SetOwner(Networking.LocalPlayer, this.gameObject);
                 playerNameId = 0;
             }
@@ -341,10 +337,9 @@ namespace YAPT.PoolTable.Ui
 
             // Handle rare cases when more then 2 players try to start the game.
             // Assure that local player is registered in MenuData.
-            if (data.isPlayer(Networking.LocalPlayer.displayName))
+            if (playerManager.isPlayer(Networking.LocalPlayer.displayName))
             {
-                localPlayerId = Networking.LocalPlayer.playerId;
-                data.SetPlayerId(playerNameId, Networking.LocalPlayer.playerId);
+                playerManager.SetPlayerId(playerNameId, Networking.LocalPlayer.playerId);
             }
 
             // Update game state for all players
@@ -375,6 +370,10 @@ namespace YAPT.PoolTable.Ui
 
         public void UnregisterOwner()
         {
+            // TODO: handle menu ownership transfer
+            // As is it can be problematic, since SetOwner can be called
+            // only from the owner or lobby owner.
+            // TODO: Switch from Ownership to just player name
             if (data.Owner == "") return;
 
             Networking.SetOwner(null, gameOwner);
@@ -382,24 +381,6 @@ namespace YAPT.PoolTable.Ui
             menuStart.SetActive(true);
             data.Reset();
             data.SyncData();
-        }
-
-        // Press functions needed to setup first state
-        private void _PressDefaultGameType()
-        {
-            if (data.ActiveGameMode == (int)GameModeType.INVALID)
-            {
-                // Default game type
-                SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "PressDefaultGameType");
-                data.ActiveGameMode = (int)GameModeType.EIGHT_BALL;
-                // From this point it should be valid for all players
-            }
-        }
-
-        public void PressDefaultGameType()
-        {
-            button8Ball._SetButtonPushed();
-            button4BallKR._SetButtonPushed();
         }
 
         [UdonSynced][HideInInspector] private int newGameType;
@@ -460,7 +441,7 @@ namespace YAPT.PoolTable.Ui
         public void UpdatePlayerNameObject()
         {
             // Player Names
-            // Indexing between stored names and displayed names are not the same.
+            // Important! Indexing between stored names and displayed names Text are not the same.
             teamCover.SetActive(!data.IsTeams);
             if (data.IsTeams)
             {
@@ -506,20 +487,179 @@ namespace YAPT.PoolTable.Ui
         {
             data.IsTeams = !data.IsTeams;
             // Remove 2nd players from teams
-            data.RemovePlayer(1);
-            data.RemovePlayer(3);
+            playerManager.RemovePlayerIndex(1);
+            playerManager.RemovePlayerIndex(3);
+            // Refresh menu view
+            ToggleJoinButtons(!playerManager.isPlayer(Networking.LocalPlayer.displayName));
             // Update player names
             _UpdatePlayerNameObject();
+        }
+
+        // <summary>
+        // [LOCAL functionality, not synchronized]
+        // Show either join or leave buttons
+        // It depends if the player is already in the game
+        // and if the teams are full.
+        // </summary>
+        private void ToggleJoinButtons(bool show_join)
+        {
+            if (show_join)
+            {
+                if (!playerManager.isTeamFull(0))
+                {
+                    buttonJoinOrange.gameObject.SetActive(true);
+                }
+                else
+                {
+                    buttonJoinOrange.gameObject.SetActive(false);
+                }
+                if (!playerManager.isTeamFull(1))
+                {
+                    buttonJoinBlue.gameObject.SetActive(true);
+                }
+                else
+                {
+                    buttonJoinBlue.gameObject.SetActive(false);
+                }
+                buttonLeave.gameObject.SetActive(false);
+            }
+            else
+            {
+                if (playerManager.isPlayer(Networking.LocalPlayer.displayName))
+                {
+                    buttonLeave.gameObject.SetActive(true);
+                }
+                buttonJoinBlue.gameObject.SetActive(false);
+                buttonJoinOrange.gameObject.SetActive(false);
+            }
+        }
+
+        private void _JoinTeam(int team_id)
+        {
+            playerManager.AddTeamPlayer(team_id, Networking.LocalPlayer.displayName, Networking.LocalPlayer.playerId);
+            data.SyncData();
+            ToggleJoinButtons(false);
+            SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, $"JoinTeam{team_id}");
+        }
+
+        private void _JoinTeam0()
+        {
+            _JoinTeam(0);
+        }
+
+        private void _JoinTeam1()
+        {
+            _JoinTeam(1);
+        }
+
+        public void JoinTeam(int team_id)
+        {
+            if (playerManager.isTeamFull(team_id))
+            {
+                buttonJoinBlue.gameObject.SetActive(false);
+            }
+            UpdatePlayerNameObject();
+        }
+
+        public void JoinTeam0()
+        {
+            JoinTeam(0);
+        }
+
+        public void JoinTeam1()
+        {
+            JoinTeam(1);
+        }
+
+        public void _LeaveTeam()
+        {
+            playerManager.RemovePlayer(Networking.LocalPlayer.displayName);
+            data.SyncData();
+            // ToggleJoinButtons(true);
+            SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "LeaveTeam");
+        }
+        public void LeaveTeam()
+        {
+            ToggleJoinButtons(true);
+            UpdatePlayerNameObject();
+        }
+
+        public void TriggerGameReset()
+        {
+            data.Reset();
+            data.SyncData();
+            menuGame.SetActive(false);
+            menuStart.SetActive(true);
         }
 
         #endregion // Synchronization
 
         #region Other methods
-        public bool isCurrentPlayer()
-        {
-            // Player assigned to this table should have localPlayerId set.
-            return localPlayerId != MenuData.INVALID_PLAYER_ID;
-        }
         #endregion // Other methods
+
+        #region Testing
+        // Can't validate Netwworking because not every VRCPlayerApi object is a VRCObjectSync
+        // Switching Onwership and checking not owner only functionality requires code modification
+        // [Header("Test")]
+
+        // public void TestListLobbyPlayers()
+        // {
+        //     foreach (VRCPlayerApi player in VRCPlayerApi.GetPlayers(new VRCPlayerApi[VRCPlayerApi.GetPlayerCount()]))
+        //     {
+        //         Debug.Log($"Player: name:{player.displayName} id:{player.playerId} isLocal:{player.isLocal}");
+        //     }
+        // }
+
+        // public void TestListGamePlayers()
+        // {
+        //     for (int i = 0; i < PlayerManager.MAX_PLAYERS; i++)
+        //     {
+        //         Debug.Log($"Player: name:{data.PlayerNames[i]} id:{data.PlayerIds[i]}");
+        //     }
+        // }
+        // private string testplayerName2 = "[2] Remote Player";
+        // private int testplayerId2 = 2;
+
+        // public void TestSimOtherPlayer()
+        // {
+        //     // Simulate other player joining
+        //     data.PlayerNames[0] = testplayerName2;
+        //     data.PlayerIds[0] = testplayerId2;
+        //     buttonPlay.gameObject.SetActive(false);
+        //     ToggleJoinButtons(true);
+        //     _UpdatePlayerNameObject();
+        // }
+
+        // public void TestAddPlayer1()
+        // {
+        //     playerManager.SetPlayer(1, "TestPlayer1", 11);
+        //     _UpdatePlayerNameObject();
+        // }
+        // public void TestAddPlayer2()
+        // {
+        //     playerManager.SetPlayer(2, "TestPlayer2", 12);
+        //     _UpdatePlayerNameObject();
+        // }
+        // public void TestAddPlayer3()
+        // {
+        //     playerManager.SetPlayer(3, "TestPlayer3", 13);
+        //     _UpdatePlayerNameObject();
+        // }
+        // public void TestRemovePlayer1()
+        // {
+        //     playerManager.RemovePlayer("TestPlayer1");
+        //     _UpdatePlayerNameObject();
+        // }
+        // public void TestRemovePlayer2()
+        // {
+        //     playerManager.RemovePlayer("TestPlayer2");
+        //     _UpdatePlayerNameObject();
+        // }
+        // public void TestRemovePlayer3()
+        // {
+        //     playerManager.RemovePlayer("TestPlayer3");
+        //     _UpdatePlayerNameObject();
+        // }
+        #endregion
     }
 }

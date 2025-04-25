@@ -18,6 +18,8 @@ namespace YAPT.PoolTable.Ui
     public class MenuData : UdonSharpBehaviour
     {
         public const uint TIMER_INF = 999;
+        private const int MAX_PLAYERS = YAPT.PoolTable.Players.PlayerManager.MAX_PLAYERS;
+        private const int INVALID_PLAYER_ID = YAPT.PoolTable.Players.PlayerManager.INVALID_PLAYER_ID;
         [UdonSynced][HideInInspector] private uint timerValue = TIMER_INF;
         [UdonSynced][HideInInspector] private string owner = "";
         [UdonSynced][HideInInspector] private int activeGameMode = -1; // GameModeType.INVALID;
@@ -25,8 +27,6 @@ namespace YAPT.PoolTable.Ui
         [UdonSynced][HideInInspector] private bool isTeams = false;
         [UdonSynced][HideInInspector] private bool isLocking = false;
         [UdonSynced][HideInInspector] private bool isGuideline = false;
-        public const int INVALID_PLAYER_ID = -1;
-        public const int MAX_PLAYERS = 4;
         // Team 1: player 0, player 1
         // Team 2: player 2, player 3
         [UdonSynced][HideInInspector] private string[] playerNames = new string[MAX_PLAYERS];
@@ -160,111 +160,20 @@ namespace YAPT.PoolTable.Ui
         {
             get => playerNames;
         }
-        public void SetPlayerName(int index, string name)
-        {
-            if (index < 0 || index >= MAX_PLAYERS)
-            {
-                Debug.LogError($"Index {index} is out of bounds.");
-                return;
-            }
-            if (playerNames[index] == "")
-            {
-                isDataSynced = false;
-                playerNames[index] = name;
-            }
-        }
-
         public int[] PlayerIds
         {
             get => playerIds;
-        }
-        public void SetPlayerId(int index, int id)
-        {
-            if (index < 0 || index >= MAX_PLAYERS)
-            {
-                Debug.LogError($"Index {index} is out of bounds.");
-                return;
-            }
-            if (playerIds[index] == INVALID_PLAYER_ID)
-            {
-                isDataSynced = false;
-                playerIds[index] = id;
-            }
-        }
-
-        public void SetPlayer(int index, string name, int id)
-        {
-            if (index < 0 || index >= MAX_PLAYERS)
-            {
-                Debug.LogError($"Index {index} is out of bounds.");
-                return;
-            }
-            if (playerNames[index] == "")
-            {
-                isDataSynced = false;
-                playerNames[index] = name;
-                playerIds[index] = id;
-            }
-        }
-
-        public bool isPlayer(string name)
-        {
-            for (int i = 0; i < MAX_PLAYERS; i++)
-            {
-                if (playerNames[i] == name)
-                {
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        public void RemovePlayer(int id)
-        {
-            RemovePlayer(playerNames[id]);
-        }
-
-        public void RemovePlayer(string name)
-        {
-            if (playerNames[0] == name)
-            {
-                MovePlayerData(1, 0);
-            }
-            else if (playerNames[1] == name)
-            {
-                ClearPlayerData(1);
-            }
-            else if (playerNames[2] == name)
-            {
-                MovePlayerData(3, 2);
-            }
-            else if (playerNames[3] == name)
-            {
-                ClearPlayerData(3);
-            }
-        }
-
-        private void ClearPlayerData(int index)
-        {
-            isDataSynced = false;
-            playerNames[index] = "";
-            playerIds[index] = INVALID_PLAYER_ID;
-        }
-
-        private void MovePlayerData(int fromIndex, int toIndex)
-        {
-            isDataSynced = false;
-            playerNames[toIndex] = playerNames[fromIndex];
-            playerIds[toIndex] = playerIds[fromIndex];
-            ClearPlayerData(fromIndex);
         }
 
         #endregion
 
         #region Networking
-        /// <summary>
-        /// Synchronizes the data to all players.
-        /// </summary>
+        // <summary>
+        // Synchronizes the data to all players.
+        // TODO: Possible Issues:
+        // 1. If only owner can change the data, then data change won't be
+        //    triggered if other players change the data.
+        // </summary>
         public void SyncData()
         {
             if (!isDataSynced)
