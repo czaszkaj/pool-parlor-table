@@ -27,6 +27,7 @@ namespace YAPT.PoolTable.Ui
         [UdonSynced][HideInInspector] private bool isTeams = false;
         [UdonSynced][HideInInspector] private bool isLocking = false;
         [UdonSynced][HideInInspector] private bool isGuideline = false;
+        [UdonSynced][HideInInspector] private bool isGameLive = false;
         // Team 1: player 0, player 1
         // Team 2: player 2, player 3
         [UdonSynced][HideInInspector] private string[] playerNames = new string[MAX_PLAYERS];
@@ -62,6 +63,7 @@ namespace YAPT.PoolTable.Ui
                 playerNames[i] = "";
                 playerIds[i] = INVALID_PLAYER_ID;
             }
+            isGameLive = false;
             isDataSynced = false;
         }
 
@@ -165,23 +167,55 @@ namespace YAPT.PoolTable.Ui
             get => playerIds;
         }
 
+        public bool IsGameLive
+        {
+            get => isGameLive;
+            set
+            {
+                if (isGameLive != value)
+                {
+                    isDataSynced = false;
+                    isGameLive = value;
+                }
+            }
+        }
+
         #endregion
 
         #region Networking
         // <summary>
         // Synchronizes the data to all players.
-        // TODO: Possible Issues:
-        // 1. If only owner can change the data, then data change won't be
-        //    triggered if other players change the data.
         // </summary>
         public void SyncData()
         {
             if (!isDataSynced)
             {
+                // Take ownership to update the data
+                Networking.SetOwner(Networking.LocalPlayer, this.gameObject);
+                // Sync all data
                 isDataSynced = true;
                 RequestSerialization();
             }
         }
         #endregion // Networking
+
+        #region Testing
+        public void TestPrintData()
+        {
+            Debug.Log($"-------- MenuData ----------\n" +
+                      $"TimerValue: {timerValue}\n" +
+                      $"Owner: {owner}\n" +
+                      $"ActiveGameMode: {activeGameMode}\n" +
+                      $"Is4BallKr: {is4BallKr}\n" +
+                      $"IsTeams: {isTeams}\n" +
+                      $"IsLocking: {isLocking}\n" +
+                      $"IsGuideline: {isGuideline}\n" +
+                      $"IsGameLive: {isGameLive}\n" +
+                      $"PlayerNames[0]: {playerNames[0]}\n" +
+                      $"PlayerNames[1]: {playerNames[1]}\n" +
+                      $"PlayerNames[2]: {playerNames[2]}\n" +
+                      $"PlayerNames[3]: {playerNames[3]}\n");
+        }
+        #endregion
     }
 }

@@ -6,11 +6,26 @@ using VRC.SDKBase;
 using VRC.Udon;
 using System;
 using YAPT.PoolTable.Table;
-using YAPT.PoolTable.Common;
 using YAPT.PoolTable.Players;
 
-// TODO
-// Add player validation for public methods, to avoid hackers
+// Interface with other modules description.
+// Requires:
+// * MenuData - store all information from menu interaction.
+// * GameModule.StartGame() - "transfer" MenuData to GameModule.
+// * TriggerGameReset() - used by RESET button.
+// * [NonSerialized] public UIButton inButton; - required by _OnButtonPressed().
+// * _OnButtonPressed() - used by UIButton module.
+// Nice to have:
+// * PlayerManager - easier manipulation of players information.
+
+// Name convenction:
+// * Methods starting with _ 
+//      Used for networking. They are usually folowed by the same method without _.
+//      One exception is _OnButtonPressed which is called from other module.
+// * Methods ending with Ind
+//      Used for networking. Expected to ba handled by everyone (caller included).
+//      Used to avoid race condition. Perform ownership sensitive changes in it.
+
 namespace YAPT.PoolTable.Ui
 {
     [UdonBehaviourSyncMode(BehaviourSyncMode.Manual)]
@@ -20,8 +35,7 @@ namespace YAPT.PoolTable.Ui
         private PlayerManager playerManager;
 
         [Header("Game Objects")]
-        [SerializeField][HideInInspector] private GameObject gameModule; // Assighned in Start
-        [SerializeField] private GameObject gameOwner;
+        [SerializeField][HideInInspector] private GameModule gameModule; // Assighned in Start
 
         [Header("Menu Objects")]
         [SerializeField] public GameObject menuGame;
@@ -67,14 +81,15 @@ namespace YAPT.PoolTable.Ui
             menuStart.SetActive(true);
             data = GetComponent<MenuData>();
             playerManager = GetComponent<PlayerManager>();
-            // Set gameModule to the parent of gameOwner
+            // Set gameModule in the Start.
             // This is needed to allow name changes of the parent object (Table1, Table2, TableInDoors, etc.)
-            gameModule = gameOwner.transform.parent.gameObject;
+            gameModule = transform.parent.gameObject.GetComponent<GameModule>();
         }
 
         // Handle animated parts of the menu
         void FixedUpdate()
         {
+            // Timer selection animation
             if (isTimeSelectAnimating)
             {
                 Vector3 position = timelimitDisplay.transform.localPosition;
@@ -91,21 +106,17 @@ namespace YAPT.PoolTable.Ui
         {
             // Check if missing player is part of the game
             if (!playerManager.isPlayer(player.displayName)) return;
-            VRCPlayerApi gameOwnerPlayer = Networking.GetOwner(gameOwner);
-            if (gameOwnerPlayer.playerId == player.playerId)
+            if (isMenuOwner(player))
             {
-                playerManager.RemovePlayer(player.displayName);
-                Networking.SetOwner(null, gameOwner);
-                if (playerManager.isPlayer(Networking.LocalPlayer.displayName))
-                {
-                    RegisterOwner();
-                    UpdatePlayerNameObject();
-                }
+                // Game owner
+                // Reset game state
+                UnregisterOwner();
 
             }
             else if (playerManager.isPlayer(Networking.LocalPlayer.displayName))
             {
                 // Local player
+                // Remove player from the menu selection
                 playerManager.RemovePlayer(player.displayName);
                 UpdatePlayerNameObject();
             }
@@ -114,19 +125,20 @@ namespace YAPT.PoolTable.Ui
 
         public override void OnPlayerJoined(VRCPlayerApi player)
         {
-            Debug.Log($"OnPlayerJoined: name:{player.displayName}, isOwner: {Networking.IsOwner(player, gameOwner)}");
             if (player.isLocal && data.Owner != "")
             {
-                // If Owner available update menu state
+                // Owner is set.
+                // Menu selection is active.
                 menuGame.SetActive(true);
                 menuStart.SetActive(false);
+                // Update locally menu state
                 UpdatePlayerNameObject();
-                _SwitchFourBallMode(data.Is4BallKr);
-                _SwitchGameMode((GameModeType)data.ActiveGameMode);
+                SwitchFourBallMode(data.Is4BallKr);
+                SwitchGameMode();
                 if (data.TimerValue != 0)
                 {
                     selectedTimer = data.TimerValue;
-                    StartSelectedTimerAnimation();
+                    SetSelectedTimerPosition();
                 }
             }
         }
@@ -147,6 +159,14 @@ namespace YAPT.PoolTable.Ui
             }
         }
 
+        private void SetSelectedTimerPosition()
+        {
+            // Set timer position
+            Vector3 position = timelimitDisplay.transform.localPosition;
+            position.x = -0.128f * selectedTimer;
+            timelimitDisplay.transform.localPosition = position;
+        }
+
         private void StartSelectedTimerAnimation()
         {
             isTimeSelectAnimating = true;
@@ -159,13 +179,13 @@ namespace YAPT.PoolTable.Ui
         [NonSerialized] public UIButton inButton;
         public void _OnButtonPressed()
         {
-            Debug.Log($"UIButton: receivedPressedEvent {inButton.name}, isOwner: {Networking.IsOwner(gameOwner)}");
             if (inButton.name == "StartButton")
             {
-                RegisterOwner();
+                // Any player can start the game
+                _RegisterOwner();
                 UpdatePlayerNameObject();
             }
-            else if (Networking.IsOwner(gameOwner))
+            else if (isMenuOwner(Networking.LocalPlayer))
             {
                 OnButtonPressedOwner(inButton);
             }
@@ -178,13 +198,8 @@ namespace YAPT.PoolTable.Ui
         private void OnButtonPressed(UIButton button)
         {
             // Update functionality for other players
-            // Add in tests option to register other player as owner
-            Debug.Log($"UIButton: AnyPlayer");
             switch (button.name)
             {
-                // case "StartButton":
-                //     RegisterOwner();
-                //     break;
                 case "JoinOrange":
                     _JoinTeam0();
                     break;
@@ -282,27 +297,20 @@ namespace YAPT.PoolTable.Ui
         public void StartGame()
         {
             // Practice mode to be validated and selected by the game
-            // based on player allocation.
-            // Save of parameter synchronization if not needed.
+            // based on player team allocation.
 
-            // TODO: Not handled yet. Need at least RESET to function
-            // // menuGame.SetActive(false);
-
-            // Trigger Game Start in game module
-            // It will start the game based on MenuData
-            //gameModule.SendCustomEvent("StartGame");
+            menuGame.SetActive(false);
+            gameModule.StartGame();
         }
 
-        public void RegisterOwner()
+        public void _RegisterOwner()
         {
             // Check if the owner is already set
             if (data.Owner != "") return;
 
             // Set the game owner
-            Networking.SetOwner(Networking.LocalPlayer, gameOwner);
-            playerManager.SetPlayerName(0, Networking.LocalPlayer.displayName);
-            data.Owner = Networking.LocalPlayer.displayName;
-            data.SyncData();
+            VRCPlayerApi player = Networking.LocalPlayer;
+            _SetMenuOwner(player);
             // Show the game menu
             menuStart.SetActive(false);
             menuGame.SetActive(true);
@@ -311,72 +319,59 @@ namespace YAPT.PoolTable.Ui
             SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "RegisterOwnerInd");
         }
 
-        /// <summary>
-        /// This function is called to update gameOwner to prevent
-        /// race condition. It uses currently set gameOwner as host.
-        /// </summary>
         public void RegisterOwnerInd()
         {
-            int playerNameId = PlayerManager.INVALID_PLAYER_ID;
-            bool isOwner = Networking.IsOwner(gameOwner);
+            VRCPlayerApi player = Networking.LocalPlayer;
+            bool isOwner = Networking.IsOwner(gameObject);
             // Check if the owner is already set and allocate player id
             if (requestedPlay && !isOwner)
             {
-                data.Owner = Networking.GetOwner(gameOwner).displayName;
-                // Shouldn't be needed, we already Sync data
-                //playerManager.SetPlayerName(0, data.Owner);
-                playerNameId = 1;
+                playerManager.SetPlayer(1, player.displayName, player.playerId);
             }
             else if (isOwner)
             {
-                _PressDefaultGameType();
-                Networking.SetOwner(Networking.LocalPlayer, this.gameObject);
-                playerNameId = 0;
+                _PressDefaultGameType(); // Only one call required
+                playerManager.SetPlayer(0, player.displayName, player.playerId);
             }
             requestedPlay = false;
 
-            // Handle rare cases when more then 2 players try to start the game.
-            // Assure that local player is registered in MenuData.
-            if (playerManager.isPlayer(Networking.LocalPlayer.displayName))
-            {
-                playerManager.SetPlayerId(playerNameId, Networking.LocalPlayer.playerId);
-            }
+            // Functionality after onwership validation
 
             // Update game state for all players
-            if (!isOwner)
+            SetButtonInteractionLimits(isOwner);
+            if (isOwner)
             {
-                // Disable setting buttons for other players
-                button8Ball.disableInteractions = true;
-                button9Ball.disableInteractions = true;
-                button4Ball.disableInteractions = true;
-                button4BallJP.disableInteractions = true;
-                button4BallKR.disableInteractions = true;
-                buttonSixReds.disableInteractions = true;
-                buttonTeamsToggle.disableInteractions = true;
-                buttonGuidelineToggle.disableInteractions = true;
-                buttonLockingToggle.disableInteractions = true;
-                buttonTimerLeft.disableInteractions = true;
-                buttonTimerRight.disableInteractions = true;
+                SetOwnerJoinButtons();
             }
-            else
-            {
-                // Local join buttons setup
-                buttonJoinOrange.gameObject.SetActive(false);
-                buttonJoinBlue.gameObject.SetActive(false);
-                buttonLeave.gameObject.SetActive(true);
-                buttonPlay.gameObject.SetActive(true);
-            }
+        }
+
+        private void SetButtonInteractionLimits(bool isOwner)
+        {
+            // Disable setting buttons for other players
+            button8Ball.disableInteractions = !isOwner;
+            button9Ball.disableInteractions = !isOwner;
+            button4Ball.disableInteractions = !isOwner;
+            button4BallJP.disableInteractions = !isOwner;
+            button4BallKR.disableInteractions = !isOwner;
+            buttonSixReds.disableInteractions = !isOwner;
+            buttonTeamsToggle.disableInteractions = !isOwner;
+            buttonGuidelineToggle.disableInteractions = !isOwner;
+            buttonLockingToggle.disableInteractions = !isOwner;
+            buttonTimerLeft.disableInteractions = !isOwner;
+            buttonTimerRight.disableInteractions = !isOwner;
+        }
+
+        private void SetOwnerJoinButtons()
+        {
+            // Local join buttons setup
+            buttonJoinOrange.gameObject.SetActive(false);
+            buttonJoinBlue.gameObject.SetActive(false);
+            buttonLeave.gameObject.SetActive(true);
+            buttonPlay.gameObject.SetActive(true);
         }
 
         public void UnregisterOwner()
         {
-            // TODO: handle menu ownership transfer
-            // As is it can be problematic, since SetOwner can be called
-            // only from the owner or lobby owner.
-            // TODO: Switch from Ownership to just player name
-            if (data.Owner == "") return;
-
-            Networking.SetOwner(null, gameOwner);
             menuGame.SetActive(false);
             menuStart.SetActive(true);
             data.Reset();
@@ -421,7 +416,11 @@ namespace YAPT.PoolTable.Ui
 
         public void SwitchFourBallMode()
         {
-            if (newIs4BallKr)
+            SwitchFourBallMode(newIs4BallKr);
+        }
+        public void SwitchFourBallMode(bool is4BallKr)
+        {
+            if (is4BallKr)
             {
                 button4BallJP._ResetPushButton();
                 // button4BallKR._SetButtonPushed();
@@ -431,7 +430,7 @@ namespace YAPT.PoolTable.Ui
                 button4BallKR._ResetPushButton();
                 // button4BallJP._SetButtonPushed();
             }
-            data.Is4BallKr = newIs4BallKr;
+            data.Is4BallKr = is4BallKr;
         }
 
         private void _UpdatePlayerNameObject()
@@ -537,7 +536,6 @@ namespace YAPT.PoolTable.Ui
         private void _JoinTeam(int team_id)
         {
             playerManager.AddTeamPlayer(team_id, Networking.LocalPlayer.displayName, Networking.LocalPlayer.playerId);
-            data.SyncData();
             ToggleJoinButtons(false);
             SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, $"JoinTeam{team_id}");
         }
@@ -574,7 +572,6 @@ namespace YAPT.PoolTable.Ui
         public void _LeaveTeam()
         {
             playerManager.RemovePlayer(Networking.LocalPlayer.displayName);
-            data.SyncData();
             // ToggleJoinButtons(true);
             SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "LeaveTeam");
         }
@@ -592,10 +589,34 @@ namespace YAPT.PoolTable.Ui
             menuStart.SetActive(true);
         }
 
+        public void _SetMenuOwner(VRCPlayerApi player)
+        {
+            Networking.SetOwner(player, gameObject);
+            SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "SetMenuOwnerInd");
+        }
+
+        public void SetMenuOwnerInd()
+        {
+            // Later validation of the owner.
+            // Confirm who got the ownership, to avoid race condition
+            if (Networking.IsOwner(gameObject))
+            {
+                data.Owner = Networking.LocalPlayer.displayName;
+                data.SyncData();
+            }
+        }
+
+        public bool isMenuOwner(VRCPlayerApi player)
+        {
+            // Use data to check current owner.
+            // Otherwise if the players leaves the game instance master would take ownership
+            return data.Owner == player.displayName;
+        }
+
         #endregion // Synchronization
 
-        #region Other methods
-        #endregion // Other methods
+        #region Other functions
+        #endregion // Other functions
 
         #region Testing
         // Can't validate Netwworking because not every VRCPlayerApi object is a VRCObjectSync
@@ -610,13 +631,13 @@ namespace YAPT.PoolTable.Ui
         //     }
         // }
 
-        // public void TestListGamePlayers()
-        // {
-        //     for (int i = 0; i < PlayerManager.MAX_PLAYERS; i++)
-        //     {
-        //         Debug.Log($"Player: name:{data.PlayerNames[i]} id:{data.PlayerIds[i]}");
-        //     }
-        // }
+        public void TestListGamePlayers()
+        {
+            for (int i = 0; i < PlayerManager.MAX_PLAYERS; i++)
+            {
+                Debug.Log($"Player: name:{data.PlayerNames[i]} id:{data.PlayerIds[i]}");
+            }
+        }
         // private string testplayerName2 = "[2] Remote Player";
         // private int testplayerId2 = 2;
 
