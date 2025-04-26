@@ -12,7 +12,7 @@ using YAPT.PoolTable.Players;
 // Requires:
 // * MenuData - store all information from menu interaction.
 // * GameModule.StartGame() - "transfer" MenuData to GameModule.
-// * TriggerGameReset() - used by RESET button.
+// * TriggerGameReset() - used by GameModule to reset Menu.
 // * [NonSerialized] public UIButton inButton; - required by _OnButtonPressed().
 // * _OnButtonPressed() - used by UIButton module.
 // Nice to have:
