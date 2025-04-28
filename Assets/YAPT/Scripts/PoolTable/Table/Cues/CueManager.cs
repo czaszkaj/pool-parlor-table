@@ -91,9 +91,6 @@ namespace YAPT.PoolTable.Cue
             lagSecondaryPosition = origSecondaryPosition;
 
             resetSecondaryOffset();
-
-            // TODO: Debug
-            primaryController.Show();
         }
 
         public override void OnDeserialization()

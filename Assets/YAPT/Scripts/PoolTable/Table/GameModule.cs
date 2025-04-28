@@ -24,7 +24,8 @@ namespace YAPT.PoolTable.Table
         EIGHT_BALL = 0,
         NINE_BALL = 1,
         FOUR_BALL = 2,
-        SIX_REDS = 3
+        FOUR_BALL_KR = 3,
+        SIX_REDS = 4
     }
 
     public class GameModule : UdonSharpBehaviour
