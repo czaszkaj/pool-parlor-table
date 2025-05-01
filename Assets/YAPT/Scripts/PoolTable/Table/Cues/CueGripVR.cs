@@ -20,7 +20,7 @@ namespace YAPT.PoolTable.Cue
 
         public virtual void Start()
         {
-            // This is needed to allow name changes of the parent object (Cue1, Cue2, CueInDoors, etc.)
+            // Dynamic assigment is needed to allow name changes of the parent object (Cue1, Cue2, CueInDoors, etc.)
             cueManager = transform.parent.gameObject.GetComponent<CueManager>();
 
             pickup = (VRC_Pickup)GetComponent(typeof(VRC_Pickup));

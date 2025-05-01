@@ -27,14 +27,13 @@ namespace YAPT.PoolTable.Ui
         [UdonSynced][HideInInspector] private bool isTeams = false;
         [UdonSynced][HideInInspector] private bool isLocking = false;
         [UdonSynced][HideInInspector] private bool isGuideline = false;
-        [UdonSynced][HideInInspector] private bool isGameLive = false;
         // Team 1: player 0, player 1
         // Team 2: player 2, player 3
         [UdonSynced][HideInInspector] private string[] playerNames = new string[MAX_PLAYERS];
         [UdonSynced][HideInInspector] private int[] playerIds = new int[MAX_PLAYERS];
         // Set it to default false for players that join later
         // and need to sync the data.
-        private bool isDataSynced = false;
+        private bool isDataSynced = true;
 
         #region UdonSharpBehaviour
         /// <summary>
@@ -42,7 +41,7 @@ namespace YAPT.PoolTable.Ui
         /// </summary>
         void Start()
         {
-            Reset();
+
         }
         public override void OnPlayerJoined(VRCPlayerApi player)
         {
@@ -63,7 +62,6 @@ namespace YAPT.PoolTable.Ui
                 playerNames[i] = "";
                 playerIds[i] = INVALID_PLAYER_ID;
             }
-            isGameLive = false;
             isDataSynced = false;
         }
 
@@ -167,24 +165,11 @@ namespace YAPT.PoolTable.Ui
             get => playerIds;
         }
 
-        public bool IsGameLive
-        {
-            get => isGameLive;
-            set
-            {
-                if (isGameLive != value)
-                {
-                    isDataSynced = false;
-                    isGameLive = value;
-                }
-            }
-        }
-
         #endregion
 
         #region Networking
         // <summary>
-        // Synchronizes the data to all players.
+        // Synchronizes the data to all players if there was a local change.
         // </summary>
         public void SyncData()
         {
@@ -210,7 +195,6 @@ namespace YAPT.PoolTable.Ui
                       $"IsTeams: {isTeams}\n" +
                       $"IsLocking: {isLocking}\n" +
                       $"IsGuideline: {isGuideline}\n" +
-                      $"IsGameLive: {isGameLive}\n" +
                       $"PlayerNames[0]: {playerNames[0]}\n" +
                       $"PlayerNames[1]: {playerNames[1]}\n" +
                       $"PlayerNames[2]: {playerNames[2]}\n" +

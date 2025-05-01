@@ -83,7 +83,7 @@ namespace YAPT.PoolTable.Cue
 
             cuetipDistance = (cuetip.transform.position - primary.transform.position).magnitude;
 
-            // Get values from Unity to alway have the same original
+            // Get values from Unity to alway have the same original value
             origPrimaryPosition = new Vector3(0, 0, 0);
             origSecondaryPosition = new Vector3(0, 0, 0.55f);
 
@@ -110,24 +110,23 @@ namespace YAPT.PoolTable.Cue
             {
                 // must not be shooting, since that takes control of the cue object
                 // if (!table.desktopManager._IsInUI() || !table.desktopManager._IsShooting())
-                if (true) //TODO
+                // if (true) //TODO: check if i want desktpop animation
+                // {
+                if (!primaryLocked)// || table.noLockingLocal) //TODO
                 {
-                    // if (!primaryLocked || table.noLockingLocal) //TODO
-                    if (true)
-                    {
-                        moveCueUnlocked();
-                    }
-                    else
-                    {
-                        moveCueLocked();
-                    }
-
-                    updateDesktopMarker();
+                    moveCueUnlocked();
                 }
                 else
                 {
-                    moveDesktopCue();
+                    moveCueLocked();
                 }
+
+                updateDesktopMarker();
+                // }
+                // else
+                // {
+                //     moveDesktopCue();
+                // }
 
                 // clamp controllers
                 clampControllers();
@@ -135,24 +134,23 @@ namespace YAPT.PoolTable.Cue
             else
             {
                 // other player has cue
-                if (!syncedHolderIsDesktop)
+                // if (!syncedHolderIsDesktop)
+                // {
+                // other player is in vr, use the grips which update faster
+                if (!primaryLocked)// || table.noLockingLocal) //TODO
                 {
-                    // other player is in vr, use the grips which update faster
-                    //if (!primaryLocked || table.noLockingLocal) //TODO
-                    if (true)
-                    {
-                        moveCueUnlockedSimplified();
-                    }
-                    else
-                    {
-                        moveCueLocked();
-                    }
+                    moveCueUnlockedSimplified();
                 }
                 else
                 {
-                    // other player is on desktop, use the slower synced marker
-                    moveDesktopCue();
+                    moveCueLocked();
                 }
+                // }
+                // else
+                // {
+                //     // other player is on desktop, use the slower synced marker
+                //     moveDesktopCue();
+                // }
             }
             getNextCueAnimationPosition();
         }
@@ -160,6 +158,34 @@ namespace YAPT.PoolTable.Cue
         #endregion // UdonSharpBehaviour
 
         #region CueManager
+
+        public void Enable()
+        {
+            if (Array.IndexOf(authorizedOwners, Networking.LocalPlayer.displayName) != -1) return;
+            primaryController.Show();
+        }
+
+        public void Disable()
+        {
+            primaryController.Hide();
+            secondaryController.Hide();
+
+            lagPrimaryPosition = origPrimaryPosition;
+            lagSecondaryPosition = origSecondaryPosition;
+        }
+        public void ResetPosition()
+        {
+            takeOwnership();
+
+            primary.transform.position = origPrimaryPosition;
+            primary.transform.localRotation = Quaternion.identity;
+            secondary.transform.position = origSecondaryPosition;
+            secondary.transform.localRotation = Quaternion.identity;
+            desktop.transform.position = origPrimaryPosition;
+            desktop.transform.localRotation = Quaternion.identity;
+            body.transform.position = origPrimaryPosition;
+            body.transform.LookAt(origSecondaryPosition);
+        }
 
         private void getNextCueAnimationPosition()
         {
@@ -203,6 +229,7 @@ namespace YAPT.PoolTable.Cue
         {
             // base of cue goes to primary
             body.transform.position = lagPrimaryPosition;
+            // body.transform.position = primary.transform.position;
 
             // holding in primary hand
             if (!secondaryHolding)
@@ -404,18 +431,7 @@ namespace YAPT.PoolTable.Cue
             return input;
         }
 
-        public void EnableCue()
-        {
-            primaryController.Show();
-        }
-
-        public void DisableCue()
-        {
-            primaryController.Hide();
-            secondaryController.Hide();
-        }
-
-        private void ResetCuePosition()
+        public void ResetCuePosition()
         {
             takeOwnership();
 

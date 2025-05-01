@@ -5,7 +5,10 @@ using VRC.SDKBase;
 using VRC.Udon;
 using System;
 using YAPT;
+using YAPT.PoolTable.Balls;
+using YAPT.PoolTable.Cue;
 using YAPT.PoolTable.Players;
+using YAPT.PoolTable.Scoreboard;
 using YAPT.PoolTable.Ui;
 
 // Name convenction:
@@ -16,38 +19,56 @@ using YAPT.PoolTable.Ui;
 //      Used for networking. Expected to ba handled by everyone (caller included).
 //      Used to avoid race condition. Perform ownership sensitive changes in it.
 
-namespace YAPT.PoolTable.Table
+namespace YAPT.PoolTable.Game
 {
+    // Similar to YAPT.PoolTable.Scoreboard.SolidTeamE
+    public enum TeamTypeE : int
+    {
+        INVALID = 0,
+        LEFT = 1,
+        RIGHT = 2
+    }
+
     public enum GameModeType : int
     {
         INVALID = -1,
         EIGHT_BALL = 0,
         NINE_BALL = 1,
-        FOUR_BALL = 2,
+        FOUR_BALL = 2, // Default JP
         FOUR_BALL_KR = 3,
         SIX_REDS = 4
     }
 
+    [UdonBehaviourSyncMode(BehaviourSyncMode.Manual)]
     public class GameModule : UdonSharpBehaviour
     {
         [Header("Table Objects")]
-        [SerializeField] private GameObject menu;
         [SerializeField] private GameObject tableModel;
-        [SerializeField] private GameObject[] cues;
-        [SerializeField] private GameObject[] balls;
+        [SerializeField] private GameObject menuObj;
+        [SerializeField] private GameObject fourBallFiller;
+        [SerializeField] private ScoreboardManager scoreboard;
+
+        [SerializeField] private CueManager[] cuesMgr;
+        [SerializeField] private BallManager ballsMgr;
+        // Menu data should be constat throughout single match
         private MenuData menuData;
+        private GameData gameData;
+        private GameModeType activeGameType;
         // TODO: compiler was using wrong MenuManager.
         // To be fixed in final version. Can stay as is for now.
         // This could be related to methaphira files, that i keep for reference
-        private YAPT.PoolTable.Ui.MenuManager menuManager;
-        private PlayerManager playerManager;
+        private YAPT.PoolTable.Ui.MenuManager menuMgr;
+        private PlayerManager playersMgr;
 
         #region UdonSharpBehaviour
         void Start()
         {
-            menuData = menu.GetComponentInParent<MenuData>();
-            menuManager = menu.GetComponentInParent<YAPT.PoolTable.Ui.MenuManager>();
-            playerManager = menu.GetComponentInParent<PlayerManager>();
+            // Get local access to components
+            gameData = GetComponentInParent<GameData>();
+            menuData = menuObj.GetComponentInParent<MenuData>();
+            menuMgr = menuObj.GetComponentInParent<YAPT.PoolTable.Ui.MenuManager>();
+            playersMgr = menuObj.GetComponentInParent<PlayerManager>();
+            ballsMgr = GetComponentInParent<BallManager>();
         }
         public void FixedUpdate()
         {
@@ -57,11 +78,13 @@ namespace YAPT.PoolTable.Table
         public override void OnPlayerJoined(VRCPlayerApi player)
         {
             // Update game state data // Done automatically with UdonSync
-            // Cue ball position
-            // Cue ownership
-            // Player turn
-            // Player scores
-            // Player game mode
+            if (player == Networking.LocalPlayer)
+            {
+                SetupTableConfiguration();
+                // Player scores
+                SetScoreboard();
+                // Player turn
+            }
         }
         public override void OnPlayerLeft(VRCPlayerApi player)
         {
@@ -73,45 +96,94 @@ namespace YAPT.PoolTable.Table
         public void StartGame()
         {
             Debug.Log("Start game");
-            // menuData.IsGameLive = true; // TODO: Testing: Keep it off to allow player modification
-            menuData.SyncData();
-            VRCPlayerApi player = Networking.LocalPlayer;
-            if (player.displayName == menuData.Owner)
-            {
-                // Set owner of the table
-                // TODO: Check who needs to be an owner during shot
-                // To update it to all players
-                Networking.SetOwner(player, gameObject);
-            }
-            // Start game
+            TestStartGame();
+            gameData.IsGameLive = true;
             // Reset game state
-
+            SetupTableConfiguration();
         }
 
         public void EndGame()
         {
-            menuData.IsGameLive = false;
+            gameData.IsGameLive = false;
+            // Reset cuesMgr
+            cuesMgr[0].Disable();
+            cuesMgr[1].Disable();
+            cuesMgr[0].ResetCuePosition();
+            cuesMgr[1].ResetCuePosition();
             // Trigger who won
             // Sync data
             // Reset menu to Play state
-            menuManager.TriggerGameReset();
+            menuMgr.TriggerGameReset();
 
+        }
+
+        private void SetupTableConfiguration()
+        {
+            activeGameType = (GameModeType)menuData.ActiveGameMode;
+            SetCuesAccess();
+            SetScoreboard();
+            // Set locking mode
+            // Set pratice mode
+            // Set 4 ball fillers
+            fourBallFiller.SetActive(IsFourBall());
+            // rulesManager.SetPraticeMode(playersMgr.IsSingleTeam());
+            // Start game
+            // ballsManager.SetActimeGameMode(activeGameType);
+            // ballsManager.SetPosition();
+            // Start timer
+        }
+
+        private bool IsFourBall()
+        {
+            return (activeGameType == GameModeType.FOUR_BALL || activeGameType == GameModeType.FOUR_BALL_KR);
+        }
+
+        private void SetCuesAccess()
+        {
+            cuesMgr[0].SetAuthorizedOwners(playersMgr.GetTeamNames(0));
+            cuesMgr[1].SetAuthorizedOwners(playersMgr.GetTeamNames(1));
+            cuesMgr[0].Enable();
+            cuesMgr[1].Enable();
+        }
+
+        private void SetScoreboard()
+        {
+            switch (activeGameType)
+            {
+                case GameModeType.EIGHT_BALL:
+                    // scoreboard.SetScore8Ball(ballsManager.ScoredBallsColors, gameData.SolidTeam);
+                    break;
+                case GameModeType.NINE_BALL:
+                    // scoreboard.SetScore9Ball(ballsManager.CurrentBallTarget);
+                    break;
+                case GameModeType.FOUR_BALL:
+                    scoreboard.SetScore4Ball(gameData.TeamScore0, gameData.TeamScore1);
+                    break;
+                case GameModeType.SIX_REDS:
+                    // scoreboard.SetScoreSnooker(gameData.TeamScore0, gameData.TeamScore1, ballsManager.CurrentBallTarget);
+                    break;
+            }
+            scoreboard.FillPlayerNames(menuData.PlayerNames);
         }
         #endregion
 
         #region Testing
+        public void TestStartGame()
+        {
+            TestSetTwoTeams();
+        }
 
         public void TestSetTwoTeams()
         {
-            playerManager.SetPlayer(1, "TestPlayer1", 11);
-            playerManager.SetPlayer(2, "TestPlayer2", 12);
-            playerManager.SetPlayer(3, "TestPlayer3", 13);
+            playersMgr.SetPlayer(1, "TestPlayer1", 11);
+            playersMgr.SetPlayer(2, "TestPlayer2", 12);
+            playersMgr.SetPlayer(3, "TestPlayer3", 13);
         }
         public void TestSetOneTeam()
         {
-            playerManager.SetPlayer(1, "TestPlayer1", 11);
-            playerManager.RemovePlayerIndex(2);
-            playerManager.RemovePlayerIndex(3);
+            playersMgr.SetPlayer(1, "TestPlayer1", 11);
+            playersMgr.RemovePlayerIndex(2);
+            playersMgr.RemovePlayerIndex(3);
         }
 
         #endregion

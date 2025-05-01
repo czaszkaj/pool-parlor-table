@@ -5,6 +5,9 @@ using VRC.SDKBase;
 using VRC.Udon;
 using YAPT.PoolTable.Ui;
 
+// Important
+// * teamId [0, 1]
+
 namespace YAPT.PoolTable.Players
 {
     [UdonBehaviourSyncMode(BehaviourSyncMode.Manual)]
@@ -36,7 +39,6 @@ namespace YAPT.PoolTable.Players
 
         public void SetPlayer(int index, string name, int id)
         {
-            if (menuData.IsGameLive) return; // Allow player change only if game is not live
             if (index < 0 || index >= MAX_PLAYERS)
             {
                 Debug.LogError($"Index {index} is out of bounds.");
@@ -51,7 +53,7 @@ namespace YAPT.PoolTable.Players
         }
 
         // Possible small optimization if playerId is used
-        public bool isPlayer(string name)
+        public bool IsPlayer(string name)
         {
             for (int i = 0; i < MAX_PLAYERS; i++)
             {
@@ -65,14 +67,11 @@ namespace YAPT.PoolTable.Players
 
         public void RemovePlayerIndex(int index)
         {
-            if (menuData.IsGameLive) return; // Allow player change only if game is not live
             RemovePlayer(menuData.PlayerNames[index]);
         }
 
         public void RemovePlayer(string name)
         {
-            Debug.Log($"PlayerManager:Remove: name:{name}");
-            if (menuData.IsGameLive) return; // Allow player change only if game is not live
             if (menuData.PlayerNames[0] == name)
             {
                 MovePlayerData(1, 0);
@@ -92,26 +91,24 @@ namespace YAPT.PoolTable.Players
             menuData.SyncData();
         }
 
-        public void AddTeamPlayer(int team_id, string name, int id)
+        public void AddTeamPlayer(int teamId, string name, int id)
         {
-            if (!menuData.IsGameLive) return; // Allow player change only if game is not live
-            if (team_id < 0 || team_id > 1) return;
-            if (isPlayer(name)) return;
-            if (isTeamFull(team_id)) return;
+            if (teamId < 0 || teamId > 1) return;
+            if (IsPlayer(name)) return;
+            if (IsTeamFull(teamId)) return;
 
-            if (menuData.PlayerNames[team_id * 2] == "")
+            if (menuData.PlayerNames[teamId * 2] == "")
             {
-                SetPlayer(team_id * 2, name, id);
+                SetPlayer(teamId * 2, name, id);
             }
-            else if (menuData.PlayerNames[team_id * 2 + 1] == "")
+            else if (menuData.PlayerNames[teamId * 2 + 1] == "")
             {
-                SetPlayer(team_id * 2 + 1, name, id);
+                SetPlayer(teamId * 2 + 1, name, id);
             }
         }
 
         // public void AddPlayer(string name, int id)
         // {
-        //     if (!menuData.IsGameLive) return; // Allow player change only if game is not live
         //     if (isPlayer(name)) return;
         //     if (menuData.PlayerNames[0] == "")
         //     {
@@ -131,16 +128,39 @@ namespace YAPT.PoolTable.Players
         //     }
         // }
 
-        public bool isTeamFull(int team_id)
+        public bool IsTeamFull(int teamId)
         {
             if (menuData.IsTeams)
             {
-                return menuData.PlayerNames[team_id * 2] != "" && menuData.PlayerNames[team_id * 2 + 1] != "";
+                return menuData.PlayerNames[teamId * 2] != "" && menuData.PlayerNames[teamId * 2 + 1] != "";
             }
             else
             {
-                return menuData.PlayerNames[team_id * 2] != "";
+                return menuData.PlayerNames[teamId * 2] != "";
             }
+        }
+
+        public bool IsSingleTeam()
+        {
+            return menuData.PlayerNames[2] == "" && menuData.PlayerNames[3] == "";
+        }
+
+        public string[] GetTeamNames(int teamId)
+        {
+            switch (teamId)
+            {
+                case 0:
+                    return new string[] { menuData.PlayerNames[0], menuData.PlayerNames[1] };
+                case 1:
+                    return new string[] { menuData.PlayerNames[2], menuData.PlayerNames[3] };
+                default:
+                    return new string[] { "", "" };
+            }
+        }
+
+        public string[] PlayerNames
+        {
+            get => menuData.PlayerNames;
         }
 
         private void ClearPlayerData(int index)

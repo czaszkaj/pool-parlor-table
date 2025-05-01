@@ -5,7 +5,7 @@ using UnityEngine.UI;
 using VRC.SDKBase;
 using VRC.Udon;
 using System;
-using YAPT.PoolTable.Table;
+using YAPT.PoolTable.Game;
 using YAPT.PoolTable.Players;
 
 // Interface with other modules description.
@@ -105,7 +105,7 @@ namespace YAPT.PoolTable.Ui
         public override void OnPlayerLeft(VRCPlayerApi player)
         {
             // Check if missing player is part of the game
-            if (!playerManager.isPlayer(player.displayName)) return;
+            if (!playerManager.IsPlayer(player.displayName)) return;
             if (isMenuOwner(player))
             {
                 // Game owner
@@ -113,12 +113,12 @@ namespace YAPT.PoolTable.Ui
                 UnregisterOwner();
 
             }
-            else if (playerManager.isPlayer(Networking.LocalPlayer.displayName))
+            else if (playerManager.IsPlayer(Networking.LocalPlayer.displayName))
             {
                 // Local player
                 // Remove player from the menu selection
-                playerManager.RemovePlayer(player.displayName);
-                UpdatePlayerNameObject();
+                // playerManager.RemovePlayer(player.displayName);
+                // UpdatePlayerNameObject();
             }
 
         }
@@ -182,6 +182,8 @@ namespace YAPT.PoolTable.Ui
             if (inButton.name == "StartButton")
             {
                 // Any player can start the game
+                data.Reset();
+                data.SyncData();
                 _RegisterOwner();
                 UpdatePlayerNameObject();
             }
@@ -489,7 +491,7 @@ namespace YAPT.PoolTable.Ui
             playerManager.RemovePlayerIndex(1);
             playerManager.RemovePlayerIndex(3);
             // Refresh menu view
-            ToggleJoinButtons(!playerManager.isPlayer(Networking.LocalPlayer.displayName));
+            ToggleJoinButtons(!playerManager.IsPlayer(Networking.LocalPlayer.displayName));
             // Update player names
             _UpdatePlayerNameObject();
         }
@@ -504,7 +506,7 @@ namespace YAPT.PoolTable.Ui
         {
             if (show_join)
             {
-                if (!playerManager.isTeamFull(0))
+                if (!playerManager.IsTeamFull(0))
                 {
                     buttonJoinOrange.gameObject.SetActive(true);
                 }
@@ -512,7 +514,7 @@ namespace YAPT.PoolTable.Ui
                 {
                     buttonJoinOrange.gameObject.SetActive(false);
                 }
-                if (!playerManager.isTeamFull(1))
+                if (!playerManager.IsTeamFull(1))
                 {
                     buttonJoinBlue.gameObject.SetActive(true);
                 }
@@ -524,7 +526,7 @@ namespace YAPT.PoolTable.Ui
             }
             else
             {
-                if (playerManager.isPlayer(Networking.LocalPlayer.displayName))
+                if (playerManager.IsPlayer(Networking.LocalPlayer.displayName))
                 {
                     buttonLeave.gameObject.SetActive(true);
                 }
@@ -552,7 +554,7 @@ namespace YAPT.PoolTable.Ui
 
         public void JoinTeam(int team_id)
         {
-            if (playerManager.isTeamFull(team_id))
+            if (playerManager.IsTeamFull(team_id))
             {
                 buttonJoinBlue.gameObject.SetActive(false);
             }

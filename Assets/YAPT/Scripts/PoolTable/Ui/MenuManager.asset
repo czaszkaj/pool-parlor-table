@@ -176,7 +176,7 @@ MonoBehaviour:
       Data: 10|System.RuntimeType, mscorlib
     - Name: 
       Entry: 1
-      Data: YAPT.PoolTable.Table.GameModule, Assembly-CSharp
+      Data: YAPT.PoolTable.Game.GameModule, Assembly-CSharp
     - Name: 
       Entry: 8
       Data: 
