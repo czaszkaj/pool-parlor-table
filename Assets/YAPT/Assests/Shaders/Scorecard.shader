@@ -1,4 +1,4 @@
-﻿Shader "metaphira/Scorecard"
+﻿Shader "yapt/metaphira/Scorecard"
 {
    Properties
    {

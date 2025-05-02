@@ -1,4 +1,4 @@
-﻿Shader "metaphira/GameUI"
+﻿Shader "yapt/metaphira/GameUI"
 {
 	Properties
 	{

@@ -1,4 +1,4 @@
-﻿Shader "metaphira/Transparent Orb (Quest)"
+﻿Shader "yapt/metaphira/Transparent Orb (Quest)"
 {
     Properties
     {

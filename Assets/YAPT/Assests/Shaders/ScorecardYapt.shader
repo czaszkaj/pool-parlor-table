@@ -1,6 +1,7 @@
-﻿Shader "yapt/Scorecard"
+﻿// metaphira/Scorecard
+Shader "yapt/Scorecard"
 {
-   // ScorecardYapt.shader is slightly modified harry_t Scorecard.shader
+   // ScorecardYapt.shader is slightly modified metaphira Scorecard.shader
    // Removed other than 8ball and 4ball modes from shader.
    // Return black color and skip calculation for mode Empty.
    Properties

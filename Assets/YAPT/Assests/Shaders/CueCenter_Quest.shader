@@ -1,4 +1,4 @@
-﻿Shader "metaphira/CueCenter (Quest)"
+﻿Shader "yapt/metaphira/CueCenter (Quest)"
 {
     Properties
     {

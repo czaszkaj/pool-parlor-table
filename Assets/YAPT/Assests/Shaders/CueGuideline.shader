@@ -1,4 +1,4 @@
-﻿Shader "harry_t/cliptable"
+﻿Shader "yapt/harry_t/cliptable"
 {
 	Properties
 	{

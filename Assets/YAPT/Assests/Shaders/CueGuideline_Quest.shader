@@ -1,4 +1,4 @@
-﻿Shader "harry_t/cliptable_quest"
+﻿Shader "yapt/harry_t/cliptable_quest"
 {
 	Properties
 	{

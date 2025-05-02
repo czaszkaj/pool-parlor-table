@@ -1,6 +1,6 @@
 ﻿// Unity built-in shader source. Copyright (c) 2016 Unity Technologies. MIT license (see license.txt)
 
-Shader "harry_t/text_alpha"
+Shader "yapt/harry_t/text_alpha"
 {
     Properties
     {

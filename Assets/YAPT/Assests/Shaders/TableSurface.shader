@@ -1,4 +1,4 @@
-﻿Shader "metaphira/TableSurface"
+﻿Shader "yapt/metaphira/TableSurface"
 {
    Properties
    {

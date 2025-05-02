@@ -1,4 +1,4 @@
-﻿Shader "harry_t/twoframe"
+﻿Shader "yapt/harry_t/twoframe"
 {
 	Properties
 	{

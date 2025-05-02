@@ -1,4 +1,4 @@
-﻿Shader "metaphira/Transparent Orb"
+﻿Shader "yapt/metaphira/Transparent Orb"
 {
     Properties
     {

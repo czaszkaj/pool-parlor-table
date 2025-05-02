@@ -1,4 +1,4 @@
-﻿Shader "metaphira/Timer"
+﻿Shader "yapt/metaphira/Timer"
 {
     Properties
     {

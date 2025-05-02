@@ -1,4 +1,4 @@
-﻿Shader "metaphira/Ball Shadow"
+﻿Shader "yapt/metaphira/Ball Shadow"
 {
    Properties
    {
