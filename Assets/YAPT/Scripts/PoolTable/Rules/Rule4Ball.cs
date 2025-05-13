@@ -16,23 +16,19 @@ namespace YAPT.PoolTable.Rules.FourBall
     [UdonBehaviourSyncMode(BehaviourSyncMode.None)]
     public class Rule4Ball : RuleBase
     {
-        private const int MIN_BALL_ID = 12;
-        private const int MAX_BALL = 4;
         [SerializeField] private Texture2D forceTexture;
-        [SerializeField] protected Transform cue0BallPos;
-        [SerializeField] protected Transform cue1BallPos;
-        [SerializeField] protected Transform red0BallPos;
-        [SerializeField] protected Transform red1BallPos;
         [SerializeField] protected GameObject pocketFillers;
-
-
         private bool isKorean = false;
+
         #region UdonSharpBehaviour
         void Start()
         {
+            MIN_BALL_ID = 12;
+            MAX_BALL_ID = 15;
             SetBallTypes();
             team0 = TeamTypeE.LEFT;
             team1 = TeamTypeE.RIGHT;
+            SetInitialBallPositions();
         }
         #endregion // UdonSharpBehaviour
 
@@ -41,15 +37,23 @@ namespace YAPT.PoolTable.Rules.FourBall
         public override void SetVisuals(bool state)
         {
             pocketFillers.SetActive(state);
+
         }
-        public override void SetBallPositions() { }
+        protected override void SetInitialBallPositions()
+        {
+            // override everything, we don't use default setup for 4 ball
+            ballInitialPositions[MIN_BALL_ID + 0] = new Vector3(-0.735f, 0f, 0f);
+            ballInitialPositions[MIN_BALL_ID + 1] = new Vector3(0.695f, 0f, 0f);
+            ballInitialPositions[MIN_BALL_ID + 2] = new Vector3(-0.32f, 0f, 0f);
+            ballInitialPositions[MIN_BALL_ID + 3] = new Vector3(0.36f, 0f, 0f);
+        }
         public override Texture2D GetTexture() { return forceTexture; }
         protected override void SetBallTypes()
         {
-            ballTypes[MIN_BALL_ID] = (int)BallTypeE.CUE_WHITE;
-            ballTypes[MIN_BALL_ID + 1] = (int)BallTypeE.CUE_YELLOW;
-            ballTypes[MIN_BALL_ID + 2] = (int)BallTypeE.RED;
-            ballTypes[MIN_BALL_ID + 3] = (int)BallTypeE.RED;
+            ballsType[MIN_BALL_ID + 0] = (int)BallTypeE.CUE_WHITE;
+            ballsType[MIN_BALL_ID + 1] = (int)BallTypeE.CUE_YELLOW;
+            ballsType[MIN_BALL_ID + 2] = (int)BallTypeE.RED;
+            ballsType[MIN_BALL_ID + 3] = (int)BallTypeE.RED;
         }
 
         // Check if the action was valid

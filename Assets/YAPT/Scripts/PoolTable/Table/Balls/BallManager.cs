@@ -27,18 +27,22 @@ namespace YAPT.PoolTable.Balls
     [UdonBehaviourSyncMode(BehaviourSyncMode.Manual)]
     public class BallManager : UdonSharpBehaviour
     {
-        public const int MAX_BALLS = 16; // ballsObj.Length
+        public const int MAX_BALLS = 17; // ballsObj.Length
         [SerializeField] private Texture2D[] textures;
         [SerializeField] private RuleBase[] rules;
         [SerializeField] private GameObject[] ballsObj;
 
-        private const float k_BALL_RADIUS = 0.03f,
-                            k_BALL_DIAMETRE = 0.06f,
-                            k_BALL_PL_X = 0.03f, // break placement X
-                            k_BALL_PL_Y = 0.05196152422f, // sin(60) * 0.06
-                            k_RANDOMIZE_F = 0.0001f,
-                            k_SPOT_POSITION_X = 0.5334f, // First X position of the racked balls
-                            k_SPOT_CAROM_X = 0.8001f; // Spot position for carom mode
+        // Default ball values (7ft)
+        private Vector3 cueBallPosition = new Vector3(-0.555f, 0, 0);
+        private float triangleBallPosition = 0.385f;
+
+        private const float BALL_RADIUS = 0.03f,
+                            BALL_DIAMETRE = 0.06f,
+                            BALL_PL_X = 0.03f, // break placement X
+                            BALL_PL_Y = 0.05196152422f, // sin(60) * 0.06
+                            RANDOMIZE_F = 0.0001f,
+                            SPOT_POSITION_X = 0.5334f, // First X position of the racked balls
+                            SPOT_CAROM_X = 0.8001f; // Spot position for carom mode
         private RuleBase activeRule;
         Texture2D forceTexture = null;
 
@@ -59,14 +63,16 @@ namespace YAPT.PoolTable.Balls
 
         public void StartGame(GameModeType gameType)
         {
+            SetRule(gameType);
+
             forceTexture = activeRule.GetTexture();
             if (forceTexture != null)
             {
                 SetTexture(forceTexture);
             }
-            activeRule.SetBallPositions();
-            //MakeTriangle(activeRule.GetTrianglePos());
 
+            activeRule.ActivateBalls(ballsObj);
+            activeRule.SetBallsPosition(ballsObj);
         }
 
         public void EndGame(GameModeType gameType)
@@ -78,6 +84,7 @@ namespace YAPT.PoolTable.Balls
         {
             SetTexture(textures[(int)type]);
         }
+
         public void SetTexture(Texture2D texture)
         {
             if (forceTexture != null) return;

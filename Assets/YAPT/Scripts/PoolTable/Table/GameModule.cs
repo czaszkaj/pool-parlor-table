@@ -43,6 +43,9 @@ namespace YAPT.PoolTable.Game
     public class GameModule : UdonSharpBehaviour
     {
         [Header("Table Objects")]
+        // [Improvement]
+        // Use tableModel to switch models 7/8/9ft
+        // Other adjustments (balls, pocket filler, walls) shall be handled separately
         [SerializeField] private GameObject tableModel;
         [SerializeField] private GameObject menuObj;
         [SerializeField] private GameObject fourBallFiller;
@@ -68,7 +71,7 @@ namespace YAPT.PoolTable.Game
             menuData = menuObj.GetComponentInParent<MenuData>();
             menuMgr = menuObj.GetComponentInParent<YAPT.PoolTable.Ui.MenuManager>();
             playersMgr = menuObj.GetComponentInParent<PlayerManager>();
-            ballsMgr = GetComponentInParent<BallManager>();
+            // ballsMgr = GetComponentInParent<BallManager>();
         }
         public void FixedUpdate()
         {
@@ -100,6 +103,8 @@ namespace YAPT.PoolTable.Game
             gameData.IsGameLive = true;
             // Reset game state
             SetupTableConfiguration();
+            ballsMgr.StartGame((GameModeType)menuData.ActiveGameMode);
+            // Start timer
         }
 
         public void EndGame()
@@ -119,18 +124,13 @@ namespace YAPT.PoolTable.Game
 
         private void SetupTableConfiguration()
         {
-            activeGameType = (GameModeType)menuData.ActiveGameMode;
             SetCuesAccess();
             SetScoreboard();
             // Set locking mode
             // Set pratice mode
+            // rulesManager.SetPraticeMode(playersMgr.IsSingleTeam());
             // Set 4 ball fillers
             fourBallFiller.SetActive(IsFourBall());
-            // rulesManager.SetPraticeMode(playersMgr.IsSingleTeam());
-            // Start game
-            // ballsManager.SetActimeGameMode(activeGameType);
-            // ballsManager.SetPosition();
-            // Start timer
         }
 
         private bool IsFourBall()

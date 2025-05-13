@@ -17,14 +17,17 @@ namespace YAPT.PoolTable.Rules.EightBall
     [UdonBehaviourSyncMode(BehaviourSyncMode.None)]
     public class Rule8Ball : RuleBase
     {
-        private const int MAX_BALL = 16;
-        [SerializeField] protected Transform cueBallPos;
-        [SerializeField] protected Transform trianglePos;
         [SerializeField] protected GameObject startLine;
+
         #region UdonSharpBehaviour
         void Start()
         {
+            MIN_BALL_ID = 0;
+            MAX_BALL_ID = 16;
+            TRIANGLE_BALL_ID = 1;
+            TRIANGLE_BALL_COUNT = 15;
             SetBallTypes();
+            SetInitialBallPositions();
         }
         #endregion // UdonSharpBehaviour
 
@@ -39,18 +42,17 @@ namespace YAPT.PoolTable.Rules.EightBall
         {
             startLine.SetActive(state);
         }
-        public override void SetBallPositions() { }
         protected override void SetBallTypes()
         {
-            ballTypes[0] = (int)BallTypeE.CUE;
-            ballTypes[8] = (int)BallTypeE.BLACK;
+            ballsType[0] = (int)BallTypeE.CUE;
+            ballsType[8] = (int)BallTypeE.BLACK;
             for (int i = 1; i < 7; i++)
             {
-                ballTypes[i] = (int)BallTypeE.SOLID;
+                ballsType[i] = (int)BallTypeE.SOLID;
             }
-            for (int i = 9; i < MAX_BALL; i++)
+            for (int i = 9; i <= MAX_BALL_ID; i++)
             {
-                ballTypes[i] = (int)BallTypeE.SOLID;
+                ballsType[i] = (int)BallTypeE.SOLID;
             }
         }
 
